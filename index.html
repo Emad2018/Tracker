@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ping AWS Endpoint</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+        }
+
+        .param {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 6px;
+            background: #f8f8f8;
+        }
+
+        .title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .raw {
+            color: #aa0000;
+        }
+
+        .real {
+            color: #006600;
+        }
+
+        #map {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Teltonika FMC150 Live Tracking</h2>
+
+    <button onclick="getData()">Get Data</button>
+    <div id="map"></div>
+    <div id="output">Data will appear here...</div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        let map, marker;
+        const avlMap = {
+            1: { name: "Digital Input 1", type: "digital" },
+            16: { name: "Total Odometer", type: "distance_m" },
+            21: { name: "GSM Signal Strength", type: "gsm_signal" },
+            24: { name: "Speed (GNSS)", type: "speed_kmh" },
+            66: { name: "External Voltage", type: "voltage_v" },
+            67: { name: "Battery Voltage", type: "voltage_v" },
+            68: { name: "Battery Current", type: "current_a" },
+            69: { name: "GNSS Status", type: "gnss_status" },
+            80: { name: "Data Mode", type: "mode" },
+            181: { name: "GNSS PDOP", type: "precision_pdop" },
+            182: { name: "GNSS HDOP", type: "precision_hdop" },
+            199: { name: "Trip Odometer", type: "distance_m" },
+            200: { name: "Sleep Mode", type: "sleep_mode" },
+            205: { name: "GSM Cell ID", type: "cell_id" },
+            206: { name: "GSM Area Code (LAC)", type: "gsm_lac" },
+            239: { name: "Ignition", type: "ignition" },
+            240: { name: "Movement", type: "movement" },
+            241: { name: "Active GSM Operator", type: "gsm_operator" }
+        };
+        function getData() {
+            const endpoint = "https://2k87ctv150.execute-api.us-east-1.amazonaws.com/Track/";
+            // ↑ Replace with your real endpoint
+
+            document.getElementById("output").innerText = "Loading...";
+
+            fetch(endpoint)
+                .then(response => response.json())
+                .then(data => {
+                    jasonData = JSON.parse(data["body"]);
+                    values = jasonData["state"]["reported"];       // 👈 parsed body
+                    decodeAndShow(values);
+                })
+                .catch(error => console.error(error));
+        }
+        function decodeTeltonika(rec) {
+            const out = {
+                timestamp: rec.ts ?? null,
+                priority: rec.pr ?? null,
+                location: null,
+                parameters: []
+            };
+
+            if (rec.latlng) {
+                const [lat, lng] = rec.latlng.split(",").map(parseFloat);
+                out.location = { latitude: lat, longitude: lng };
+                if (rec.sp !== undefined) out.location.speed_kmh = rec.sp;
+                if (rec.alt !== undefined) out.location.altitude_m = rec.alt;
+                if (rec.ang !== undefined) out.location.angle = rec.ang;
+                if (rec.sat !== undefined) out.location.satellites = rec.sat;
+            }
+
+            for (const key in rec) {
+                const id = parseInt(key, 10);
+                if (!avlMap[id]) continue;
+                const meta = avlMap[id];
+                const raw = rec[key];
+                let real = raw;
+
+                switch (meta.type) {
+                    case "voltage_v":
+                        real = (raw / 1000).toFixed(3) + " V";
+                        break;
+                    case "current_a":
+                        real = (raw / 1000).toFixed(3) + " A";
+                        break;
+                    case "distance_m":
+                        real = raw + " m";
+                        break;
+                    case "speed_kmh":
+                        real = raw + " km/h";
+                        break;
+                    case "digital":
+                    case "ignition":
+                    case "movement":
+                        real = (raw === 1) ? "ON / TRUE" : "OFF / FALSE";
+                        break;
+                    case "gsm_signal":
+                        real = raw + " (0–5 scale)";
+                        break;
+                    case "gnss_status":
+                        // According to doc: 0 = OFF, 1 = ON fix, 2 = ON no fix, 3 = sleep, 4 = invalid fix
+                        const st = ["OFF", "GNSS ON (fix)", "GNSS ON (no fix)", "GNSS sleep", "GNSS ON (invalid)"];
+                        real = st[raw] || raw;
+                        break;
+                    case "sleep_mode":
+                        const sl = ["No Sleep", "GPS Sleep", "Deep Sleep", "Online Sleep", "Ultra Sleep"];
+                        real = sl[raw] || raw;
+                        break;
+                    case "precision_pdop":
+                    case "precision_hdop":
+                        real = (raw / 10).toFixed(1);
+                        break;
+                    default:
+                        // leave raw value
+                        break;
+                }
+
+                out.parameters.push({
+                    id,
+                    name: meta.name,
+                    raw_value: raw,
+                    real_value: real
+                });
+            }
+
+            return out;
+        }
+        function decodeAndShow(record) {
+            const decoded = decodeTeltonika(record);
+            const outDiv = document.getElementById("output");
+            outDiv.innerHTML = "";
+
+            // Timestamp / location
+            if (decoded.timestamp) {
+                const dt = new Date(decoded.timestamp);
+                outDiv.innerHTML += `<div class="param"><div class="title">Timestamp</div>
+      <span class="raw">${decoded.timestamp}</span><br>
+      <span class="real">${dt.toISOString()}</span></div>`;
+            }
+            if (decoded.location) {
+                outDiv.innerHTML += `<div class="param"><div class="title">Location</div>
+      Lat: <span class="real">${decoded.location.latitude}</span><br>
+      Lon: <span class="real">${decoded.location.longitude}</span><br>
+      ${decoded.location.speed_kmh !== undefined ? "Speed: <span class='real'>" + decoded.location.speed_kmh + " km/h</span><br>" : ""}
+      ${decoded.location.altitude_m !== undefined ? "Altitude: <span class='real'>" + decoded.location.altitude_m + " m</span><br>" : ""}
+      ${decoded.location.satellites !== undefined ? "Satellites: <span class='real'>" + decoded.location.satellites + "</span><br>" : ""}
+    </div>`;
+            }
+
+            // Other IO / AVL parameters
+            decoded.parameters.forEach(p => {
+                outDiv.innerHTML += `<div class="param"><div class="title">${p.name} (ID ${p.id})</div>
+      Raw: <span class="raw">${p.raw_value}</span><br>
+      Real: <span class="real">${p.real_value}</span>
+    </div>`;
+            });
+
+            document.getElementById("map").innerHTML = `
+                <iframe 
+                    src="https://www.google.com/maps?q=`+ decoded.location.latitude + "," + decoded.location.longitude + `&hl=en&z=15&output=embed" 
+                    width="100%" 
+                    height="100%" 
+                    style="border:0;" 
+                    allowfullscreen="" 
+                    loading="lazy">
+                </iframe>`;
+        }
+    </script>
+
+</body>
+
+</html>
