@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Trip Viewer</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            width: 60%;
+            height: 100%;
+        }
+
+        #panel {
+            width: 40%;
+            padding: 12px;
+            overflow-y: auto;
+            border-left: 1px solid #ccc;
+        }
+
+        .trip {
+            border: 1px solid #ccc;
+            padding: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .trip:hover {
+            background: #f5f5f5;
+        }
+
+        nav {
+            display: flex;
+            gap: 10px;
+            /* space between buttons */
+            padding: 10px;
+        }
+
+        nav button {
+            background-color: #4CAF50;
+            /* green */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        nav button:hover {
+            background-color: #45a049;
+            /* darker green on hover */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="panel">
+        <nav>
+            <button onclick="location.href='index.html'">Home</button>
+            <button onclick="location.href='trips.html'">Trips</button>
+        </nav>
+        <h3>Trips</h3>
+        <div id="trips">Loading…</div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const API_URL = "https://12byiwuq21.execute-api.us-east-1.amazonaws.com/ProductionApi";
+        const MIN_TRIP_DISTANCE_METERS = 100; // discard anomaly trips
+        const SQLcommand = JSON.stringify({
+            body: "SELECT * FROM tracker_data WHERE DeviceId = 2147483647 ORDER BY timestamp ASC;"
+        });
+
+        /* ------------------ MAP ------------------ */
+        const map = L.map("map").setView([30.08, 31.016], 15);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap"
+        }).addTo(map);
+
+        /* ------------------ FETCH DATA ------------------ */
+        async function fetchDeviceData() {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: SQLcommand
+            });
+
+            const result = await response.json();
+            return result.body; // array of records
+        }
+
+        /* ------------------ TRIP LOGIC ------------------ */
+        function buildTrips(records) {
+            const trips = [];
+            let currentTrip = null;
+
+            records.forEach(p => {
+                const active = p.ignition === 1 && p.movement === 1 && p.latitude !== 0 && p.longitude !== 0;
+
+                if (active) {
+                    if (!currentTrip) {
+                        currentTrip = {
+                            start: p.timestamp,
+                            startOdo: p.total_odometer_m,
+                            points: []
+                        };
+                    }
+                    currentTrip.points.push(p);
+                } else if (currentTrip) {
+                    closeTrip(currentTrip, p);
+                    if (currentTrip.valid) trips.push(currentTrip);
+                    currentTrip = null;
+                }
+            });
+
+            if (currentTrip) {
+                closeTrip(currentTrip, currentTrip.points.at(-1));
+                if (currentTrip.valid) trips.push(currentTrip);
+            }
+
+            return trips;
+        }
+
+        function closeTrip(trip, lastPoint) {
+            trip.end = lastPoint.timestamp;
+            trip.endOdo = lastPoint.total_odometer_m;
+
+            const distanceMeters = trip.endOdo - trip.startOdo;
+
+            trip.distanceMeters = distanceMeters;
+            trip.distanceKm = (distanceMeters / 1000).toFixed(2);
+            trip.valid = distanceMeters >= MIN_TRIP_DISTANCE_METERS;
+        }
+
+        /* ------------------ SHOW TRIP ------------------ */
+        let currentLayer;
+        let startMarker;
+        let endMarker;
+
+
+        function showTrip(trip) {
+            if (currentLayer) map.removeLayer(currentLayer);
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+
+            // ✅ CRITICAL FIX: sort points by timestamp
+            const sortedPoints = [...trip.points].sort(
+                (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+            );
+
+            const latlngs = sortedPoints.map(p => [
+                parseFloat(p.latitude),
+                parseFloat(p.longitude)
+            ]);
+
+            currentLayer = L.polyline(latlngs, {
+                color: "blue",
+                weight: 5
+            }).addTo(map);
+
+            map.fitBounds(currentLayer.getBounds());
+
+            startMarker = L.marker(latlngs[0]).addTo(map).bindPopup("Start").openPopup();
+            endMarker = L.marker(latlngs.at(-1)).addTo(map).bindPopup("End");
+        }
+
+        /* ------------------ INIT ------------------ */
+        async function init() {
+            const data = await fetchDeviceData();
+            const trips = buildTrips(data);
+
+            const tripsDiv = document.getElementById("trips");
+            tripsDiv.innerHTML = "";
+
+            if (trips.length === 0) {
+                tripsDiv.innerHTML = "No trips found.";
+                return;
+            }
+
+            trips.forEach((trip, idx) => {
+                const div = document.createElement("div");
+                div.className = "trip";
+                div.innerHTML = `
+        <b>Trip ${idx + 1}</b><br>
+        Start: ${new Date(trip.start).toLocaleString()}<br>
+        End: ${new Date(trip.end).toLocaleString()}<br>
+        Distance: ${trip.distanceKm} km
+      `;
+                div.onclick = () => showTrip(trip);
+                tripsDiv.appendChild(div);
+            });
+        }
+
+        init();
+    </script>
+
+</body>
+
+</html>
