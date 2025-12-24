@@ -2,216 +2,90 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <title>Trip Viewer</title>
-
-    <!-- Leaflet CSS -->
+    <meta charset="UTF-8">
+    <title>Trip History | FleetTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body {
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            font-family: Arial, sans-serif;
+        #trip-map {
+            height: 500px;
+            width: 100%;
+            border-radius: 12px;
         }
 
-        #map {
-            width: 60%;
-            height: 100%;
+        .nav-bg {
+            background-color: #0b1426;
         }
 
-        #panel {
-            width: 40%;
-            padding: 12px;
-            overflow-y: auto;
-            border-left: 1px solid #ccc;
+        .input-bg {
+            background-color: #1a253d;
         }
 
-        .trip {
-            border: 1px solid #ccc;
-            padding: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
+        /* Custom Marker Colors using CSS Hue-Rotate */
+        .marker-green {
+            filter: hue-rotate(260deg) brightness(90%) saturate(150%);
         }
 
-        .trip:hover {
-            background: #f5f5f5;
+        /* Green */
+        .marker-red {
+            filter: hue-rotate(160deg) brightness(90%) saturate(150%);
         }
 
-        nav {
-            display: flex;
-            gap: 10px;
-            /* space between buttons */
-            padding: 10px;
+        /* Red */
+        .marker-orange {
+            filter: hue-rotate(210deg) brightness(100%) saturate(200%);
         }
 
-        nav button {
-            background-color: #4CAF50;
-            /* green */
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-
-        nav button:hover {
-            background-color: #45a049;
-            /* darker green on hover */
-        }
+        /* Orange */
     </style>
 </head>
 
-<body>
+<body class="bg-slate-50">
+    <nav class="nav-bg text-white p-4 flex justify-between items-center shadow-xl">
+        <div class="flex items-center space-x-6">
+            <span class="font-bold text-xl tracking-tight">FLEET<span class="text-blue-400">TRACK</span></span>
+        </div>
+        <div class="flex input-bg rounded-lg p-1 space-x-1">
+            <a href="index.html" class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Live
+                View</a>
+            <a href="trips.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Trip
+                History</a>
+        </div>
+        <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
+            <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
+            <input type="text" id="device-id"
+                class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
+            <button onclick="saveDeviceId()"
+                class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+        </div>
+    </nav>
 
-    <div id="map"></div>
+    <main class="container mx-auto p-6 space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex gap-4 items-end flex-wrap">
+            <div class="flex-1 min-w-[200px]"><label
+                    class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label><input
+                    type="date" id="from" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+            <div class="flex-1 min-w-[200px]"><label
+                    class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label><input type="date"
+                    id="to" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+            <button onclick="loadTrips()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold text-sm h-[40px]">Search
+                Trips</button>
+        </div>
+        <div id="trip-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
 
-    <div id="panel">
-        <nav>
-            <button onclick="location.href='index.html'">Home</button>
-            <button onclick="location.href='trips.html'">Trips</button>
-        </nav>
-        <h3>Trips</h3>
-        <div id="trips">Loading…</div>
+    <div id="map-modal"
+        class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-5xl rounded-3xl p-6 relative shadow-2xl">
+            <button onclick="closeMap()"
+                class="absolute top-4 right-6 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
+            <h3 class="font-bold text-xl text-slate-800 mb-4">Trip Route Details</h3>
+            <div id="trip-map"></div>
+        </div>
     </div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script>
-        const API_URL = "https://12byiwuq21.execute-api.us-east-1.amazonaws.com/ProductionApi";
-        const MIN_TRIP_DISTANCE_METERS = 100; // discard anomaly trips
-        const SQLcommand = JSON.stringify({
-            body: "SELECT * FROM tracker_data WHERE DeviceId = 2147483647 ORDER BY timestamp ASC;"
-        });
-
-        /* ------------------ MAP ------------------ */
-        const map = L.map("map").setView([30.08, 31.016], 15);
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: "© OpenStreetMap"
-        }).addTo(map);
-
-        /* ------------------ FETCH DATA ------------------ */
-        async function fetchDeviceData() {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: SQLcommand
-            });
-
-            const result = await response.json();
-            return result.body; // array of records
-        }
-
-        /* ------------------ TRIP LOGIC ------------------ */
-        function buildTrips(records) {
-            const trips = [];
-            let currentTrip = null;
-
-            records.forEach(p => {
-                const active = p.ignition === 1 && p.movement === 1 && p.latitude !== 0 && p.longitude !== 0;
-
-                if (active) {
-                    if (!currentTrip) {
-                        currentTrip = {
-                            start: p.timestamp,
-                            startOdo: p.total_odometer_m,
-                            points: []
-                        };
-                    }
-                    currentTrip.points.push(p);
-                } else if (currentTrip) {
-                    closeTrip(currentTrip, p);
-                    if (currentTrip.valid) trips.push(currentTrip);
-                    currentTrip = null;
-                }
-            });
-
-            if (currentTrip) {
-                closeTrip(currentTrip, currentTrip.points.at(-1));
-                if (currentTrip.valid) trips.push(currentTrip);
-            }
-
-            return trips;
-        }
-
-        function closeTrip(trip, lastPoint) {
-            trip.end = lastPoint.timestamp;
-            trip.endOdo = lastPoint.total_odometer_m;
-
-            const distanceMeters = trip.endOdo - trip.startOdo;
-
-            trip.distanceMeters = distanceMeters;
-            trip.distanceKm = (distanceMeters / 1000).toFixed(2);
-            trip.valid = distanceMeters >= MIN_TRIP_DISTANCE_METERS;
-        }
-
-        /* ------------------ SHOW TRIP ------------------ */
-        let currentLayer;
-        let startMarker;
-        let endMarker;
-
-
-        function showTrip(trip) {
-            if (currentLayer) map.removeLayer(currentLayer);
-            if (startMarker) map.removeLayer(startMarker);
-            if (endMarker) map.removeLayer(endMarker);
-
-            // ✅ CRITICAL FIX: sort points by timestamp
-            const sortedPoints = [...trip.points].sort(
-                (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-            );
-
-            const latlngs = sortedPoints.map(p => [
-                parseFloat(p.latitude),
-                parseFloat(p.longitude)
-            ]);
-
-            currentLayer = L.polyline(latlngs, {
-                color: "blue",
-                weight: 5
-            }).addTo(map);
-
-            map.fitBounds(currentLayer.getBounds());
-
-            startMarker = L.marker(latlngs[0]).addTo(map).bindPopup("Start").openPopup();
-            endMarker = L.marker(latlngs.at(-1)).addTo(map).bindPopup("End");
-        }
-
-        /* ------------------ INIT ------------------ */
-        async function init() {
-            const data = await fetchDeviceData();
-            const trips = buildTrips(data);
-
-            const tripsDiv = document.getElementById("trips");
-            tripsDiv.innerHTML = "";
-
-            if (trips.length === 0) {
-                tripsDiv.innerHTML = "No trips found.";
-                return;
-            }
-
-            trips.forEach((trip, idx) => {
-                const div = document.createElement("div");
-                div.className = "trip";
-                div.innerHTML = `
-        <b>Trip ${idx + 1}</b><br>
-        Start: ${new Date(trip.start).toLocaleString()}<br>
-        End: ${new Date(trip.end).toLocaleString()}<br>
-        Distance: ${trip.distanceKm} km
-      `;
-                div.onclick = () => showTrip(trip);
-                tripsDiv.appendChild(div);
-            });
-        }
-
-        init();
-    </script>
-
+    <script src="trips.js"></script>
 </body>
 
 </html>

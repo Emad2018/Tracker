@@ -2,212 +2,122 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <title>FMC150 Live Tracker</title>
-
-    <!-- Leaflet CSS -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tracking | FleetTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-        }
-
         #map {
-            width: 40%;
-            height: 100%;
+            height: 75vh;
+            width: 100%;
+            border-radius: 12px;
+            z-index: 1;
         }
 
-        #info {
-            flex: 1;
-            padding: 16px;
-            border-left: 1px solid #ddd;
-            overflow-y: auto;
+        .nav-bg {
+            background-color: #0b1426;
         }
 
-        .row {
-            font-size: 14px;
-            margin-bottom: 6px;
-        }
-
-        .label {
-            font-weight: bold;
-        }
-
-        .control {
-            margin-bottom: 12px;
-        }
-
-        input {
-            width: 80px;
-            padding: 4px;
-        }
-
-        button {
-            padding: 4px 8px;
-            margin-left: 6px;
-            cursor: pointer;
-        }
-
-        .trip {
-            border: 1px solid #ccc;
-            padding: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-        }
-
-        .trip:hover {
-            background: #f5f5f5;
-        }
-
-        nav {
-            display: flex;
-            gap: 10px;
-            /* space between buttons */
-            padding: 10px;
-        }
-
-        nav button {
-            background-color: #4CAF50;
-            /* green */
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-
-        nav button:hover {
-            background-color: #45a049;
-            /* darker green on hover */
+        .input-bg {
+            background-color: #1a253d;
         }
     </style>
 </head>
 
-<body>
-
-    <div id="map"></div>
-
-    <div id="info">
-        <nav>
-            <button onclick="location.href='index.html'">Home</button>
-            <button onclick="location.href='trips.html'">Trips</button>
-        </nav>
-        <h2>FMC150 Device Data</h2>
-
-        <div class="control">
-            <span class="label">Refresh (sec):</span>
-            <input id="refreshInput" type="number" value="10" min="1" />
-            <button onclick="applyRefreshRate()">Apply</button>
+<body class="bg-slate-50">
+    <nav class="nav-bg text-white p-4 flex justify-between items-center shadow-xl">
+        <div class="flex items-center space-x-6">
+            <span class="font-bold text-xl tracking-tight">FLEET<span class="text-blue-400">TRACK</span></span>
         </div>
 
-        <div id="data">Loading…</div>
+        <div class="flex input-bg rounded-lg p-1 space-x-1">
+            <a href="index.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Live View</a>
+            <a href="trips.html" class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Trip
+                History</a>
 
-        <hr />
-        <div class="row">
-            <span class="label">Last update:</span>
-            <span id="lastUpdate">–</span>
         </div>
-    </div>
+        <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
+            <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
+            <input type="text" id="device-id"
+                class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
+            <button onclick="saveDeviceId()"
+                class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+        </div>
+    </nav>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="lg:col-span-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+            <div id="map"></div>
+        </div>
 
-    <script>
-        const API_URL = "https://12byiwuq21.execute-api.us-east-1.amazonaws.com/ProductionApi";
+        <div class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                <h2 class="font-bold text-slate-700 border-b pb-2">Telemetry Data</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Ignition</p>
+                        <span id="ignition"
+                            class="px-3 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 uppercase">Connecting...</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Speed</p>
+                        <p class="text-2xl font-black text-slate-800"><span id="speed">0</span> <span
+                                class="text-sm font-normal text-slate-500">km/h</span></p>
+                    </div>
+                </div>
 
-        let map;
-        let marker;
-        let poller;
-        let refreshRateSec = 10;
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Odometer</p>
+                        <p id="odo" class="text-lg font-mono text-slate-700">0 m</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Movement</p>
+                        <p id="movement" class="text-lg font-bold text-slate-700">--</p>
+                    </div>
 
-        const SQLcommand = JSON.stringify({
-            body: "SELECT * FROM tracker_data WHERE DeviceId = 2147483647 ORDER BY timestamp DESC LIMIT 1;"
-        });
+                </div>
 
-        async function fetchDeviceData() {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: SQLcommand
-            });
+                <p id="time" class="text-[10px] text-slate-400 italic pt-4 border-t">No data received</p>
+            </div>
 
-            const result = await response.json();
-            return result.body[0];
-        }
-
-        function updateInfoPanel(data) {
-            const container = document.getElementById("data");
-            container.innerHTML = "";
-
-            Object.entries(data).forEach(([key, value]) => {
-                const row = document.createElement("div");
-                row.className = "row";
-                row.innerHTML = `<span class="label">${key}:</span> ${value}`;
-                container.appendChild(row);
-            });
-
-            document.getElementById("lastUpdate").innerText =
-                new Date(data.timestamp).toLocaleString();
-        }
-
-        function updateMap(data) {
-            const lat = parseFloat(data.latitude);
-            const lng = parseFloat(data.longitude);
-
-            if (!map) {
-                map = L.map("map").setView([lat, lng], 15);
-
-                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                    attribution: "© OpenStreetMap"
-                }).addTo(map);
-
-                marker = L.marker([lat, lng])
-                    .addTo(map)
-                    .bindPopup(`Device ${data.DeviceId}`)
-                    .openPopup();
-            } else {
-                marker.setLatLng([lat, lng]);
-                map.panTo([lat, lng]);
-            }
-        }
-
-        async function refresh() {
-            try {
-                const data = await fetchDeviceData();
-                updateInfoPanel(data);
-                updateMap(data);
-            } catch (err) {
-                console.error("Refresh failed", err);
-            }
-        }
-
-        function startPolling() {
-            refresh();
-            poller = setInterval(refresh, refreshRateSec * 1000);
-        }
-
-        function applyRefreshRate() {
-            const input = Number(document.getElementById("refreshInput").value);
-
-            if (isNaN(input) || input < 1) {
-                alert("Please enter a valid number (>= 1 second)");
-                return;
-            }
-
-            refreshRateSec = input;
-            clearInterval(poller);
-            startPolling();
-        }
-
-        window.onload = startPolling;
-    </script>
-
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-700 border-b pb-2 mb-4 text-xs uppercase tracking-wider">System
+                    Diagnostics</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">GSM Signal</p>
+                        <p id="gsm" class="text-lg font-bold text-slate-700">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Satellites</p>
+                        <p id="sats" class="text-lg font-bold text-slate-700">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Battery</p>
+                        <div class="flex items-center space-x-1">
+                            <p id="battery" class="text-lg font-bold text-slate-700">--</p>
+                            <span id="battery-alert"
+                                class="hidden text-[8px] bg-red-100 text-red-600 px-1 rounded font-bold">LOW</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Altitude</p>
+                        <p id="alt" class="text-lg font-bold text-slate-700">--</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-50 space-y-2 text-[11px]">
+                    <div class="flex justify-between"><span class="text-slate-400">GNSS Status:</span> <span
+                            id="gnss-status" class="font-bold">--</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">Operator:</span> <span id="operator"
+                            class="font-bold">--</span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="index.js"></script>
 </body>
 
 </html>
