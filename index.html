@@ -10,7 +10,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         #map {
-            height: 75vh;
+            height: 70vh;
+            /* Reduced slightly to fit footer */
             width: 100%;
             border-radius: 12px;
             z-index: 1;
@@ -23,31 +24,41 @@
         .input-bg {
             background-color: #1a253d;
         }
+
+        /* Ensure the live marker looks the same as trips */
+        .marker-blue {
+            filter: hue-rotate(0deg) brightness(100%);
+        }
     </style>
 </head>
 
-<body class="bg-slate-50">
+<body class="bg-slate-50 min-h-screen flex flex-col">
     <nav class="nav-bg text-white p-4 flex justify-between items-center shadow-xl">
         <div class="flex items-center space-x-6">
             <span class="font-bold text-xl tracking-tight">FLEET<span class="text-blue-400">TRACK</span></span>
-        </div>
 
-        <div class="flex input-bg rounded-lg p-1 space-x-1">
-            <a href="index.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Live View</a>
-            <a href="trips.html" class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Trip
-                History</a>
 
         </div>
-        <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
-            <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
-            <input type="text" id="device-id"
-                class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
-            <button onclick="saveDeviceId()"
-                class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+
+        <div class="flex items-center space-x-4">
+            <div class="flex input-bg rounded-lg p-1 space-x-1">
+                <a href="index.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Live
+                    View</a>
+                <a href="trips.html"
+                    class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Trip History</a>
+            </div>
+
+            <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
+                <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
+                <input type="text" id="device-id"
+                    class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
+                <button onclick="saveDeviceId()"
+                    class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+            </div>
         </div>
     </nav>
 
-    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
         <div class="lg:col-span-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
             <div id="map"></div>
         </div>
@@ -77,7 +88,6 @@
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Movement</p>
                         <p id="movement" class="text-lg font-bold text-slate-700">--</p>
                     </div>
-
                 </div>
 
                 <p id="time" class="text-[10px] text-slate-400 italic pt-4 border-t">No data received</p>
@@ -117,6 +127,25 @@
             </div>
         </div>
     </main>
+
+    <footer class="bg-white border-t border-slate-200 p-3 px-6 flex justify-between items-center text-slate-500">
+        <div class="hidden md:flex items-center space-x-2  pl-6">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Next Update:</span>
+            <span id="timer-display" class="font-mono text-blue-400 text-sm font-bold w-8 text-center">10s</span>
+        </div>
+        <div class="text-[11px] font-medium italic" id="status-text">System Active</div>
+        <div class="flex items-center space-x-4">
+            <label class="text-[10px] font-bold uppercase text-slate-400">Refresh Every:</label>
+            <div class="flex items-center bg-slate-100 rounded-lg px-2 py-1">
+                <input type="number" id="refresh-rate" value="10" min="1" max="300"
+                    class="bg-transparent border-none outline-none text-slate-700 font-bold text-xs w-10 text-center">
+                <span class="text-[10px] font-bold text-slate-400 ml-1">sec</span>
+            </div>
+            <button onclick="applyRefreshRate()"
+                class="bg-slate-800 text-white text-[10px] font-bold px-4 py-1.5 rounded-md hover:bg-slate-700 transition">APPLY</button>
+        </div>
+    </footer>
+
     <script src="index.js"></script>
 </body>
 
