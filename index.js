@@ -45,7 +45,7 @@ function saveDeviceId() {
  */
 function applyRefreshRate() {
     let newVal = parseInt(refreshInput.value);
-    if (isNaN(newVal) || newVal < 1) newVal = 1; // Minimum 5s floor
+    if (isNaN(newVal) || newVal < 1) newVal = 1; // Minimum 1s floor
 
     refreshIntervalSeconds = newVal;
     localStorage.setItem('refreshRate', newVal);
