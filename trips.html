@@ -41,27 +41,43 @@
     </style>
 </head>
 
-<body class="bg-slate-50">
-    <nav class="nav-bg text-white p-4 flex justify-between items-center shadow-xl">
+<body class="bg-slate-50 min-h-screen flex flex-col">
+    <nav class="nav-bg text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <div class="flex items-center space-x-4">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
+                class="h-10 w-auto">
+            <div class="flex flex-col">
+                <span class="font-black text-lg leading-tight tracking-tight">TW <span
+                        class="text-pink-400">FleetMarschall</span></span>
+                <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
+                    Intelligence</span>
+            </div>
+        </div>
+
         <div class="flex items-center space-x-6">
-            <span class="font-bold text-xl tracking-tight">FLEET<span class="text-blue-400">TRACK</span></span>
-        </div>
-        <div class="flex input-bg rounded-lg p-1 space-x-1">
-            <a href="index.html" class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Live
-                View</a>
-            <a href="trips.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Trip
-                History</a>
-        </div>
-        <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
-            <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
-            <input type="text" id="device-id"
-                class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
-            <button onclick="saveDeviceId()"
-                class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+            <div class="flex input-bg rounded-xl p-1 shadow-inner">
+                <a href="index.html"
+                    class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">LIVE
+                    VIEW</a>
+                <a href="#"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">TRIP
+                    HISTORY</a>
+            </div>
+
+            <div class="flex items-center input-bg border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
+                <div class="flex flex-col mr-4">
+                    <label class="text-[8px] font-black text-slate-500 uppercase">Tracking Target</label>
+                    <input type="text" id="device-id"
+                        class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-28"
+                        placeholder="Enter ID...">
+                </div>
+                <button onclick="saveDeviceId()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all active:scale-95">SET</button>
+            </div>
         </div>
     </nav>
 
-    <main class="container mx-auto p-6 space-y-6">
+    <main class="container mx-auto p-6 space-y-6 flex-grow">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex gap-4 items-end flex-wrap">
             <div class="flex-1 min-w-[200px]"><label
                     class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label><input
@@ -85,6 +101,14 @@
             <div id="trip-map"></div>
         </div>
     </div>
+    <footer
+        class="bg-white border-t border-slate-200 p-4 px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-8">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
+                class="h-6 opacity-80">
+        </div>
+
+    </footer>
     <script src="trips.js"></script>
 </body>
 

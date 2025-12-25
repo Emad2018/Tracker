@@ -4,17 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Tracking | FleetTrack</title>
+    <title>Live Tracking | TW FleetMarschall</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         #map {
             height: 70vh;
-            /* Reduced slightly to fit footer */
             width: 100%;
-            border-radius: 12px;
+            border-radius: 16px;
             z-index: 1;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .nav-bg {
@@ -25,128 +25,184 @@
             background-color: #1a253d;
         }
 
-        /* Ensure the live marker looks the same as trips */
         .marker-blue {
             filter: hue-rotate(0deg) brightness(100%);
+        }
+
+        @keyframes pulse-blue {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .timer-active {
+            animation: pulse-blue 2s infinite ease-in-out;
+        }
+
+        .sig-bar {
+            width: 4px;
+            margin-right: 1px;
+            background-color: #e2e8f0;
+            border-radius: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .sig-bar.active {
+            background-color: #3b82f6;
         }
     </style>
 </head>
 
-<body class="bg-slate-50 min-h-screen flex flex-col">
-    <nav class="nav-bg text-white p-4 flex justify-between items-center shadow-xl">
-        <div class="flex items-center space-x-6">
-            <span class="font-bold text-xl tracking-tight">FLEET<span class="text-blue-400">TRACK</span></span>
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-900">
 
-
+    <nav class="nav-bg text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <div class="flex items-center space-x-4">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
+                class="h-10 w-auto">
+            <div class="flex flex-col">
+                <span class="font-black text-lg leading-tight tracking-tight">TW <span
+                        class="text-pink-400">FleetMarschall</span></span>
+                <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
+                    Intelligence</span>
+            </div>
         </div>
 
-        <div class="flex items-center space-x-4">
-            <div class="flex input-bg rounded-lg p-1 space-x-1">
-                <a href="index.html" class="bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-medium">Live
-                    View</a>
+        <div class="flex items-center space-x-6">
+            <div class="flex input-bg rounded-xl p-1 shadow-inner">
+                <a href="#"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">LIVE
+                    VIEW</a>
                 <a href="trips.html"
-                    class="text-slate-300 hover:bg-slate-700 px-5 py-2 rounded-md text-sm font-medium">Trip History</a>
+                    class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">TRIP
+                    HISTORY</a>
             </div>
 
-            <div class="flex items-center input-bg border border-slate-700 rounded-lg px-3 py-1 ml-4">
-                <label class="text-[11px] font-bold text-slate-400 uppercase mr-3">Device ID:</label>
-                <input type="text" id="device-id"
-                    class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-32">
+            <div class="flex items-center input-bg border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
+                <div class="flex flex-col mr-4">
+                    <label class="text-[8px] font-black text-slate-500 uppercase">Tracking Target</label>
+                    <input type="text" id="device-id"
+                        class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-28"
+                        placeholder="Enter ID...">
+                </div>
                 <button onclick="saveDeviceId()"
-                    class="ml-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded transition">SET</button>
+                    class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all active:scale-95">SET</button>
             </div>
         </div>
     </nav>
 
-    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
-        <div class="lg:col-span-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow max-w-[1600px] mx-auto w-full">
+        <div class="lg:col-span-3 bg-white p-3 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
             <div id="map"></div>
         </div>
 
         <div class="space-y-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-                <h2 class="font-bold text-slate-700 border-b pb-2">Telemetry Data</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Ignition</p>
+            <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                <h2
+                    class="font-black text-slate-800 text-sm uppercase tracking-widest border-b border-slate-50 pb-4 mb-4">
+                    Telemetry Data</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Ignition</p>
                         <span id="ignition"
-                            class="px-3 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 uppercase">Connecting...</span>
+                            class="inline-block px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-400 uppercase transition-all duration-300">N/A</span>
                     </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Speed</p>
-                        <p class="text-2xl font-black text-slate-800"><span id="speed">0</span> <span
-                                class="text-sm font-normal text-slate-500">km/h</span></p>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Current Speed</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter"><span id="speed">0</span><span
+                                class="text-xs font-medium text-slate-400 ml-1">km/h</span></p>
                     </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
+                    <div class="space-y-1">
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Odometer</p>
-                        <p id="odo" class="text-lg font-mono text-slate-700">0 m</p>
+                        <p id="odo" class="text-sm font-bold text-slate-700 font-mono">0.00 km</p>
                     </div>
-                    <div>
+                    <div class="space-y-1">
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Movement</p>
-                        <p id="movement" class="text-lg font-bold text-slate-700">--</p>
+                        <p id="movement" class="text-sm font-black text-blue-600 uppercase">--</p>
                     </div>
                 </div>
-
-                <p id="time" class="text-[10px] text-slate-400 italic pt-4 border-t">No data received</p>
+                <p id="time"
+                    class="mt-6 pt-4 border-t border-slate-50 text-[9px] text-slate-400 font-medium italic text-center transition-colors">
+                    System Initializing...</p>
             </div>
 
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="font-bold text-slate-700 border-b pb-2 mb-4 text-xs uppercase tracking-wider">System
-                    Diagnostics</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
+            <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-5">
+                <h3 class="font-black text-slate-800 text-sm uppercase tracking-widest border-b border-slate-50 pb-4">
+                    System Diagnostics</h3>
+                <div class="grid grid-cols-2 gap-y-5 gap-x-2">
+                    <div class="space-y-1">
                         <p class="text-[10px] font-bold text-slate-400 uppercase">GSM Signal</p>
-                        <p id="gsm" class="text-lg font-bold text-slate-700">--</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Satellites</p>
-                        <p id="sats" class="text-lg font-bold text-slate-700">--</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Battery</p>
-                        <div class="flex items-center space-x-1">
-                            <p id="battery" class="text-lg font-bold text-slate-700">--</p>
-                            <span id="battery-alert"
-                                class="hidden text-[8px] bg-red-100 text-red-600 px-1 rounded font-bold">LOW</span>
+                        <div class="flex items-end space-x-0.5 h-4 mb-1" id="signal-bars">
+                            <div class="sig-bar h-[4px]"></div>
+                            <div class="sig-bar h-[7px]"></div>
+                            <div class="sig-bar h-[10px]"></div>
+                            <div class="sig-bar h-[13px]"></div>
+                            <div class="sig-bar h-[16px]"></div>
+
                         </div>
                     </div>
-                    <div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Satellites</p>
+                        <p id="sats" class="text-lg font-bold text-slate-800">--</p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Battery</p>
+                        <div class="flex items-center space-x-2">
+                            <p id="battery" class="text-lg font-bold text-slate-800">--</p>
+                            <span id="battery-alert"
+                                class="hidden text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-black animate-pulse uppercase">Low</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Altitude</p>
-                        <p id="alt" class="text-lg font-bold text-slate-700">--</p>
+                        <p id="alt" class="text-lg font-bold text-slate-800">--</p>
                     </div>
                 </div>
-                <div class="mt-4 pt-4 border-t border-slate-50 space-y-2 text-[11px]">
-                    <div class="flex justify-between"><span class="text-slate-400">GNSS Status:</span> <span
-                            id="gnss-status" class="font-bold">--</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Operator:</span> <span id="operator"
-                            class="font-bold">--</span></div>
+                <div class="pt-4 border-t border-slate-50 space-y-2 text-[10px]">
+                    <div class="flex justify-between text-slate-500"><span>GNSS Status:</span> <span id="gnss-status"
+                            class="text-slate-800 font-bold text-right">--</span></div>
+                    <div class="flex justify-between text-slate-500"><span>Operator:</span> <span id="operator"
+                            class="text-slate-800 font-bold">--</span></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="bg-white border-t border-slate-200 p-3 px-6 flex justify-between items-center text-slate-500">
-        <div class="hidden md:flex items-center space-x-2  pl-6">
-            <span class="text-[10px] text-slate-400 font-bold uppercase">Next Update:</span>
-            <span id="timer-display" class="font-mono text-blue-400 text-sm font-bold w-8 text-center">10s</span>
-        </div>
-        <div class="text-[11px] font-medium italic" id="status-text">System Active</div>
-        <div class="flex items-center space-x-4">
-            <label class="text-[10px] font-bold uppercase text-slate-400">Refresh Every:</label>
-            <div class="flex items-center bg-slate-100 rounded-lg px-2 py-1">
-                <input type="number" id="refresh-rate" value="10" min="1" max="300"
-                    class="bg-transparent border-none outline-none text-slate-700 font-bold text-xs w-10 text-center">
-                <span class="text-[10px] font-bold text-slate-400 ml-1">sec</span>
+    <footer
+        class="bg-white border-t border-slate-200 p-4 px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-8">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
+                class="h-6 opacity-80">
+            <div class="flex items-center space-x-3 bg-slate-50 px-4 py-1.5 rounded-full border border-slate-100">
+                <span class="text-[9px] text-slate-400 font-black uppercase">Next Update</span>
+                <span id="timer-display"
+                    class="font-mono text-blue-600 text-sm font-black w-8 text-center timer-active">10s</span>
             </div>
-            <button onclick="applyRefreshRate()"
-                class="bg-slate-800 text-white text-[10px] font-bold px-4 py-1.5 rounded-md hover:bg-slate-700 transition">APPLY</button>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div id="status-text" class="text-[10px] uppercase tracking-widest hidden md:block">Ready</div>
+            <div class="flex items-center bg-slate-100 rounded-xl px-3 py-1.5 border border-slate-200 shadow-sm">
+                <label class="text-[9px] font-black uppercase text-slate-500 mr-3">Polling Rate</label>
+                <input type="number" id="refresh-rate" value="10" min="1" max="300"
+                    class="bg-transparent border-none outline-none text-slate-800 font-black text-xs w-8 text-center">
+                <span class="text-[10px] font-bold text-slate-400 ml-1 mr-3">sec</span>
+                <button onclick="applyRefreshRate()"
+                    class="bg-slate-800 text-white text-[9px] font-black px-4 py-1.5 rounded-lg hover:bg-blue-600 transition-all active:scale-95">APPLY</button>
+            </div>
         </div>
     </footer>
-
     <script src="index.js"></script>
+
 </body>
 
 </html>
