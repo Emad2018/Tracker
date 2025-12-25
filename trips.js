@@ -87,7 +87,7 @@ async function loadTrips() {
                 <div class="grid grid-cols-2 gap-3 py-3 border-y border-slate-50 text-center">
                     <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Distance</p><p class="font-bold text-sm text-slate-800">${(t.distance_m / 1000).toFixed(2)} km</p></div>
                     <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Avg Speed</p><p class="font-bold text-sm text-slate-800">${t.avg_speed} km/h</p></div>
-                    <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Total Time</p><p class="font-bold text-sm text-slate-800">${formatDuration(t.duration_sec)}</p></div>
+                    <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Duration</p><p class="font-bold text-sm text-slate-800">${formatDuration(t.duration_sec)}</p></div>
                     <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Stops</p><p class="font-bold text-sm text-slate-800">${stopCount}</p></div>
                 </div>
                 <div class="text-[10px] text-slate-500 flex justify-between">
