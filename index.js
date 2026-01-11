@@ -1,8 +1,9 @@
-const API_URL = "https://12byiwuq21.execute-api.us-east-1.amazonaws.com/API/live";
+const API_URL = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/production/live";
 const EGYPT_COORDS = [26.8206, 30.8025];
 const OPERATOR_MAP = {
     "60201": "Orange EG", "60202": "Vodafone EG", "60203": "Etisalat EG", "60204": "WE EG"
 };
+
 const map = L.map('map', { closePopupOnClick: true }).setView(EGYPT_COORDS, 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(map);
 
@@ -16,16 +17,20 @@ let deviceMarker = null;
 
 let refreshIntervalSeconds = parseInt(localStorage.getItem('refreshRate')) || 10;
 let secondsRemaining = refreshIntervalSeconds;
-const deviceInput = document.getElementById('device-id');
+const deviceInput = document.getElementById('device-id'); // This is your IMEI input
 const refreshInput = document.getElementById('refresh-rate');
 const timerDisplay = document.getElementById('timer-display');
 
-deviceInput.value = localStorage.getItem('lastDeviceId');
+// 1. Updated LocalStorage Key to lastImei
+deviceInput.value = localStorage.getItem('lastImei');
 if (refreshInput) refreshInput.value = refreshIntervalSeconds;
 
 function saveDeviceId() {
     const id = deviceInput.value.trim();
-    if (id) { localStorage.setItem('lastDeviceId', id); resetTimer(); }
+    if (id) {
+        localStorage.setItem('lastImei', id);
+        resetTimer();
+    }
 }
 
 function applyRefreshRate() {
@@ -49,7 +54,6 @@ function clearDashboard(statusMsg) {
     document.getElementById('odo').innerText = "0.00 km";
     document.getElementById('movement').innerText = "--";
 
-    // Bold treatment for failures/warnings
     const timeEl = document.getElementById('time');
     const statusEl = document.getElementById('status-text');
 
@@ -62,7 +66,6 @@ function clearDashboard(statusMsg) {
     const ign = document.getElementById('ignition');
     ign.innerText = "N/A";
     ign.className = "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-400";
-
 
     const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
     bars.forEach(bar => bar.classList.remove('active'));
@@ -85,14 +88,15 @@ setInterval(() => {
 }, 1000);
 
 async function updateLive() {
-    const id = deviceInput.value.trim();
-    if (!id) {
-        clearDashboard("Enter Device ID");
+    const imei = deviceInput.value.trim();
+    if (!imei) {
+        clearDashboard("Enter IMEI");
         return;
     }
 
     try {
-        const res = await fetch(`${API_URL}?deviceId=${id}`);
+        // 2. Updated API query parameter from deviceId to imei
+        const res = await fetch(`${API_URL}?imei=${imei}`);
         if (!res.ok) throw new Error("Connection Failed");
 
         const data = await res.json();
@@ -102,7 +106,6 @@ async function updateLive() {
             return;
         }
 
-        // SUCCESS: Reset style to normal
         const timeEl = document.getElementById('time');
         const statusEl = document.getElementById('status-text');
         timeEl.className = "mt-6 pt-4 border-t border-slate-50 text-[9px] text-slate-400 font-medium italic text-center";
@@ -114,14 +117,21 @@ async function updateLive() {
         } else {
             deviceMarker.setLatLng(pos);
         }
-        deviceMarker.bindPopup(`<b>Device:</b> ${id}`);
+        deviceMarker.bindPopup(`<b>IMEI:</b> ${imei}`);
         map.setView(pos, 15);
 
         document.getElementById('speed').innerText = data.speed_gnss || 0;
         const odoKm = (parseFloat(data.total_odometer_m) || 0) / 1000;
         document.getElementById('odo').innerText = odoKm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " km";
         document.getElementById('movement').innerText = data.movement === 1 ? "Moving" : "Stationary";
-        document.getElementById('time').innerText = "Last Update: " + (data.timestamp || new Date().toLocaleTimeString());
+
+        // 3. Updated Timestamp Formatting (converts ms to readable string)
+        if (data.timestamp) {
+            const dateObj = new Date(parseInt(data.timestamp));
+            document.getElementById('time').innerText = "Last Update: " + dateObj.toLocaleString();
+        } else {
+            document.getElementById('time').innerText = "Last Update: " + new Date().toLocaleTimeString();
+        }
 
         const ign = document.getElementById('ignition');
         ign.innerText = data.ignition === 1 ? "IGNITION ON" : "IGNITION OFF";
@@ -140,10 +150,10 @@ async function updateLive() {
 
         document.getElementById('sats').innerText = data.satellites || 0;
         document.getElementById('alt').innerText = (data.altitude || 0) + " m";
-        document.getElementById('operator').innerText = OPERATOR_MAP[data.active_gsm_operator] || data.active_gsm_operator || "N/A";;
+        document.getElementById('operator').innerText = OPERATOR_MAP[data.active_gsm_operator] || data.active_gsm_operator || "N/A";
 
         const v = parseFloat(data.battery_voltage_v) || 0;
-        document.getElementById('battery').innerText = v + " V";
+        document.getElementById('battery').innerText = v.toFixed(2) + " V";
         document.getElementById('battery-alert').classList.toggle('hidden', v >= 10);
         document.getElementById('status-text').innerText = "Signal Received: " + new Date().toLocaleTimeString();
 
