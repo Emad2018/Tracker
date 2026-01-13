@@ -27,7 +27,7 @@ L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
 const createCenteredIcon = (colorClass, size) => L.divIcon({
     className: '',
-    html: `<img src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png" class="${colorClass}" style="width:${size[0]}px; height:${size[1]}px;">`,
+    html: `<img src="https://res.cloudinary.com/dx20j6wpl/image/upload/a_90/v1768313910/car_lxaigz.png" class="${colorClass}" style="width:${size[0]}px; height:${size[1]}px;">`,
     iconSize: size, iconAnchor: [size[0] / 2, size[1]], popupAnchor: [0, -size[1]]
 });
 

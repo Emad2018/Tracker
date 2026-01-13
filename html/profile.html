@@ -10,12 +10,7 @@ body { background:#f8fafc }
 
 <script>
 if (!localStorage.getItem("idToken")) {
-    window.location.href = "/loginPage.html";
-}
-
-function logout() {
-    localStorage.removeItem("idToken");
-    window.location.href = "/loginPage.html";
+    window.location.href = "../html/loginPage.html";
 }
 </script>
 </head>
