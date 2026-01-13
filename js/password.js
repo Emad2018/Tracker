@@ -69,7 +69,7 @@ document.getElementById("resetForm")?.addEventListener("submit", (e) => {
     {
       onSuccess: () => {
         showMessage("Password reset successfully! Redirecting to login...", "step3Success");
-        setTimeout(() => window.location.href = "/loginPage.html", 1500);
+        setTimeout(() => window.location.href = "../html/loginPage.html", 1500);
       },
       onFailure: (err) => {
         showMessage(err.message || "Failed to reset password.", "step3Error");

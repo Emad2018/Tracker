@@ -13,6 +13,28 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+window.logout =function() {
+    localStorage.removeItem('idToken');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = "../html/loginPage.html";
+}
+
+function checkDeviceActive(data) {
+  if (!data.timestamp) return false;
+
+  const deviceTime = new Date(data.timestamp.replace(" ", "T"));
+  const now = new Date();
+  let is_active = false;
+  const diffMinutes = Math.floor((now - deviceTime) / 60000);
+  if (diffMinutes > 15) {
+    is_active = false;
+  } else {
+    is_active = true;
+  }
+  return is_active;
+}
+
 async function loadProfile() {
   const res = await fetch(`${API_BASE}/profile`, {
     headers: { "Authorization": "Bearer " + localStorage.getItem("idToken") }
@@ -65,7 +87,7 @@ async function loadDevices() {
         </span>
 
         <div class="flex gap-2 justify-end">
-        <a href="live.html?device=${device.deviceId}"
+        <a href="../html/live.html?device=${device.deviceId}"
             class="text-[10px] font-black bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg transition">
             TRACK
         </a>

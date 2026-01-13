@@ -32,7 +32,7 @@ document.getElementById("tempPassForm").addEventListener("submit", (e)=>{
   cognitoUser.authenticateUser(authDetails, {
     onSuccess: () => {
       // User is fully confirmed → skip step2, redirect to loginPage
-      window.location.href = "/loginPage.html";
+      window.location.href = "../html/loginPage.html";
     },
     onFailure: (err) => showMessage(err.message, "step2Error"),
     newPasswordRequired: () => {
@@ -52,7 +52,7 @@ document.getElementById("resetForm").addEventListener("submit",(e)=>{
   if(newPassword.length<8) return showMessage("Password must be at least 8 characters","step3Error");
 
   cognitoUser.completeNewPasswordChallenge(newPassword,{},{
-    onSuccess:()=> window.location.href="/loginPage.html",
+    onSuccess:()=> window.location.href="../html/loginPage.html",
     onFailure:(err)=>showMessage(err.message,"step3Error")
   });
 });

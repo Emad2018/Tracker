@@ -67,7 +67,7 @@ function loginUser(email, password) {
       localStorage.setItem("refreshToken", refreshToken)
 
       // Redirect to live page
-      window.location.href = "/live.html" 
+      window.location.href = "../html/live.html" 
     },
 
     onFailure: (err) => {
