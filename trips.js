@@ -17,7 +17,7 @@ let pathLayer = L.layerGroup().addTo(tripMap);
 
 // 2. Global State & Page Init
 document.addEventListener('DOMContentLoaded', () => {
-    const savedId = localStorage.getItem('lastDeviceId') || "2147483647";
+    const savedId = localStorage.getItem('lastImei') || "";
     document.getElementById('device-id').value = savedId;
 
     // Default "From" to beginning of today, "To" to now
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function saveDeviceId() {
     const id = document.getElementById('device-id').value.trim();
     if (id) {
-        localStorage.setItem('lastDeviceId', id);
+        localStorage.setItem('lastImei', id);
         loadTrips();
     } else {
         alert("Please enter a valid Device ID");

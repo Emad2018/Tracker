@@ -1,11 +1,29 @@
-const API_URL = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/production/live";
+import { Amplify } from 'https://esm.sh/aws-amplify';
+import { generateClient } from 'https://esm.sh/@aws-amplify/api';
+
+// --- CONFIGURATION ---
+Amplify.configure({
+    API: {
+        GraphQL: {
+            endpoint: 'https://m677wqaywfat7ejuca7wmgwfeq.appsync-api.us-east-1.amazonaws.com/graphql',
+            region: 'us-east-1',
+            defaultAuthMode: 'apiKey',
+            apiKey: 'da2-6o2v64fnsvgivacrzto5nl3ouq'
+        }
+    }
+});
+
+const client = generateClient();
 const EGYPT_COORDS = [26.8206, 30.8025];
 const OPERATOR_MAP = {
     "60201": "Orange EG", "60202": "Vodafone EG", "60203": "Etisalat EG", "60204": "WE EG"
 };
+const OFFLINE_THRESHOLD_MS = 10 * 60 * 1000; // 10 Minutes in milliseconds
 
-const map = L.map('map', { closePopupOnClick: true }).setView(EGYPT_COORDS, 6);
+// --- MAP SETUP ---
+const map = L.map('map', { closePopupOnClick: true, zoomControl: false }).setView(EGYPT_COORDS, 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(map);
+L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
 const createCenteredIcon = (colorClass, size) => L.divIcon({
     className: '',
@@ -13,155 +31,259 @@ const createCenteredIcon = (colorClass, size) => L.divIcon({
     iconSize: size, iconAnchor: [size[0] / 2, size[1]], popupAnchor: [0, -size[1]]
 });
 
+// --- STATE ---
 let deviceMarker = null;
+let subscription = null;
+let isFirstLoad = true;
 
-let refreshIntervalSeconds = parseInt(localStorage.getItem('refreshRate')) || 10;
-let secondsRemaining = refreshIntervalSeconds;
-const deviceInput = document.getElementById('device-id'); // This is your IMEI input
-const refreshInput = document.getElementById('refresh-rate');
-const timerDisplay = document.getElementById('timer-display');
+const deviceInput = document.getElementById('device-id');
+const statusBadge = document.getElementById('status-badge');
+const footerMsg = document.getElementById('footer-msg');
 
-// 1. Updated LocalStorage Key to lastImei
-deviceInput.value = localStorage.getItem('lastImei');
-if (refreshInput) refreshInput.value = refreshIntervalSeconds;
+// --- INIT ---
+const storedImei = localStorage.getItem('lastImei') || "";
+if (storedImei) {
+    deviceInput.value = storedImei;
+    initConnection(storedImei);
+}
 
-function saveDeviceId() {
+document.getElementById('set-btn').addEventListener('click', () => {
     const id = deviceInput.value.trim();
     if (id) {
         localStorage.setItem('lastImei', id);
-        resetTimer();
+        initConnection(id);
+    }
+});
+
+// --- CORE LOGIC ---
+
+async function initConnection(imei) {
+    // Reset UI for connection attempt
+    isFirstLoad = true;
+    updateStatusBadge('connecting');
+
+    if (subscription) {
+        subscription.unsubscribe();
+        subscription = null;
+    }
+
+    // 1. Fetch Initial Data
+    await fetchInitialData(imei);
+
+    // 2. Start Subscription (Regardless of offline/online, we listen for new data)
+    startSubscription(imei);
+}
+
+async function fetchInitialData(imei) {
+    const getQuery = `
+        query GetStatus($imei: String!) {
+            getVehicleLastStatus(imei: $imei) {
+                imei latitude longitude speed_gnss ignition 
+                timestamp battery_voltage_v heading total_odometer_m
+                gnss_status satellites altitude active_gsm_operator gsm_signal_strength
+            }
+        }`;
+
+    try {
+        const response = await client.graphql({
+            query: getQuery,
+            variables: { imei: imei }
+        });
+
+        const data = response.data.getVehicleLastStatus;
+
+        if (data) {
+            handleNewData(data);
+        } else {
+            // Case: Device ID Not Found
+            clearAllData();
+            updateStatusBadge('not_found');
+            document.getElementById('panel-imei').innerText = imei;
+        }
+    } catch (err) {
+        console.error("Init Error:", err);
+        updateStatusBadge('offline', "Connection Error");
     }
 }
 
-function applyRefreshRate() {
-    let newVal = parseInt(refreshInput.value);
-    if (isNaN(newVal) || newVal < 1) newVal = 1;
-    refreshIntervalSeconds = newVal;
-    localStorage.setItem('refreshRate', newVal);
-    resetTimer();
+function startSubscription(imei) {
+    const subQuery = `
+        subscription OnUpdate($imei: String!) {
+            onVehicleUpdate(imei: $imei) {
+                imei latitude longitude speed_gnss ignition 
+                timestamp battery_voltage_v heading total_odometer_m
+                gnss_status satellites altitude active_gsm_operator gsm_signal_strength
+            }
+        }`;
+
+    subscription = client.graphql({
+        query: subQuery,
+        variables: { imei: imei }
+    }).subscribe({
+        next: ({ data }) => {
+            const v = data.onVehicleUpdate;
+            if (v) handleNewData(v);
+        },
+        error: (err) => {
+            console.error("Sub Error:", err);
+        }
+    });
 }
 
-function resetTimer() { secondsRemaining = refreshIntervalSeconds; updateLive(); }
+// --- LOGIC HANDLERS ---
 
-function clearDashboard(statusMsg) {
+function handleNewData(data) {
+    const now = Date.now();
+    const lastPing = parseInt(data.timestamp); // Assuming timestamp is epoch ms
+    const diff = now - lastPing;
+
+    // Determine Status based on Time
+    if (diff > OFFLINE_THRESHOLD_MS) {
+        updateStatusBadge('offline', "Data > 10 min old");
+    } else {
+        updateStatusBadge('live');
+    }
+
+    updateDashboard(data);
+}
+
+// --- UI UPDATERS ---
+
+function updateStatusBadge(status, msg = "") {
+    // Reset classes
+    statusBadge.className = "status-badge";
+
+    if (status === 'live') {
+        statusBadge.innerText = "ONLINE";
+        statusBadge.classList.add('badge-live');
+        footerMsg.innerText = "Socket Connected | Live Data";
+        footerMsg.className = "text-[10px] uppercase tracking-widest text-green-600 font-bold";
+    }
+    else if (status === 'offline') {
+        statusBadge.innerText = "OFFLINE";
+        statusBadge.classList.add('badge-offline');
+        footerMsg.innerText = msg || "Device Offline";
+        footerMsg.className = "text-[10px] uppercase tracking-widest text-red-500 font-bold";
+    }
+    else if (status === 'not_found') {
+        statusBadge.innerText = "NOT FOUND";
+        statusBadge.classList.add('badge-notfound');
+        footerMsg.innerText = "Device ID Not Registered";
+        footerMsg.className = "text-[10px] uppercase tracking-widest text-slate-500 font-bold";
+    }
+    else if (status === 'connecting') {
+        statusBadge.innerText = "CONNECTING";
+        statusBadge.classList.add('badge-waiting');
+        footerMsg.innerText = "Establishing Connection...";
+        footerMsg.className = "text-[10px] uppercase tracking-widest text-blue-500 font-bold";
+    }
+}
+
+function clearAllData() {
     if (deviceMarker) {
         map.removeLayer(deviceMarker);
         deviceMarker = null;
     }
-    map.setView(EGYPT_COORDS, 6);
+    // Clear Panel Data
+    document.getElementById('panel-ping').innerText = "--";
+    document.getElementById('panel-imei').innerText = "--";
 
+    // Clear Telemetry
     document.getElementById('speed').innerText = "0";
     document.getElementById('odo').innerText = "0.00 km";
     document.getElementById('movement').innerText = "--";
+    document.getElementById('ignition').innerText = "N/A";
+    document.getElementById('ignition').className = "inline-block px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-400 uppercase";
 
-    const timeEl = document.getElementById('time');
-    const statusEl = document.getElementById('status-text');
-
-    timeEl.innerHTML = `<strong>${statusMsg}</strong>`;
-    timeEl.className = "mt-6 pt-4 border-t border-slate-50 text-[9px] text-red-500 font-medium italic text-center";
-
-    statusEl.innerHTML = `<strong>${statusMsg}</strong>`;
-    statusEl.className = "text-[10px] uppercase tracking-widest hidden md:block text-red-500";
-
-    const ign = document.getElementById('ignition');
-    ign.innerText = "N/A";
-    ign.className = "px-3 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-400";
-
-    const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
-    bars.forEach(bar => bar.classList.remove('active'));
-
+    // Clear Diagnostics
     document.getElementById('sats').innerText = "--";
     document.getElementById('battery').innerText = "--";
-    document.getElementById('battery-alert').classList.add('hidden');
     document.getElementById('alt').innerText = "--";
     document.getElementById('gnss-status').innerText = "--";
     document.getElementById('operator').innerText = "--";
+
+    // Reset Bars
+    const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
+    bars.forEach(bar => bar.classList.remove('active'));
 }
 
-setInterval(() => {
-    secondsRemaining--;
-    if (secondsRemaining <= 0) { updateLive(); secondsRemaining = refreshIntervalSeconds; }
-    if (timerDisplay) {
-        timerDisplay.innerText = secondsRemaining + "s";
-        timerDisplay.style.color = (secondsRemaining <= 3) ? "#ef4444" : "#2563eb";
-    }
-}, 1000);
+function updateDashboard(data) {
+    if (!data.latitude) return;
 
-async function updateLive() {
-    const imei = deviceInput.value.trim();
-    if (!imei) {
-        clearDashboard("Enter IMEI");
-        return;
-    }
+    const pos = [parseFloat(data.latitude), parseFloat(data.longitude)];
 
-    try {
-        // 2. Updated API query parameter from deviceId to imei
-        const res = await fetch(`${API_URL}?imei=${imei}`);
-        if (!res.ok) throw new Error("Connection Failed");
-
-        const data = await res.json();
-
-        if (!data.latitude || parseFloat(data.latitude) === 0) {
-            clearDashboard("No Signal Found");
-            return;
-        }
-
-        const timeEl = document.getElementById('time');
-        const statusEl = document.getElementById('status-text');
-        timeEl.className = "mt-6 pt-4 border-t border-slate-50 text-[9px] text-slate-400 font-medium italic text-center";
-        statusEl.className = "text-[10px] uppercase tracking-widest hidden md:block text-slate-400 font-bold";
-
-        const pos = [parseFloat(data.latitude), parseFloat(data.longitude)];
-        if (!deviceMarker) {
-            deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [25, 41]) }).addTo(map);
-        } else {
-            deviceMarker.setLatLng(pos);
-        }
-        deviceMarker.bindPopup(`<b>IMEI:</b> ${imei}`);
+    // 1. Map Logic
+    if (!deviceMarker) {
+        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [25, 41]) }).addTo(map);
         map.setView(pos, 15);
-
-        document.getElementById('speed').innerText = data.speed_gnss || 0;
-        const odoKm = (parseFloat(data.total_odometer_m) || 0) / 1000;
-        document.getElementById('odo').innerText = odoKm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " km";
-        document.getElementById('movement').innerText = data.movement === 1 ? "Moving" : "Stationary";
-
-        // 3. Updated Timestamp Formatting (converts ms to readable string)
-        if (data.timestamp) {
-            const dateObj = new Date(parseInt(data.timestamp));
-            document.getElementById('time').innerText = "Last Update: " + dateObj.toLocaleString();
+        isFirstLoad = false;
+    } else {
+        deviceMarker.setLatLng(pos);
+        if (isFirstLoad) {
+            map.setView(pos, 15);
+            isFirstLoad = false;
         } else {
-            document.getElementById('time').innerText = "Last Update: " + new Date().toLocaleTimeString();
+            map.panTo(pos);
         }
-
-        const ign = document.getElementById('ignition');
-        ign.innerText = data.ignition === 1 ? "IGNITION ON" : "IGNITION OFF";
-        ign.className = `px-3 py-1 rounded-full text-[9px] font-black uppercase ${data.ignition === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-
-        const gnssStatusMap = { 0: "GNSS OFF", 1: "GNSS ON with fix", 2: "GNSS ON without fix", 3: "GNSS sleep", 4: "GNSS ON with fix, invalid data" };
-        const gnssEl = document.getElementById('gnss-status');
-        const gCode = parseInt(data.gnss_status);
-        gnssEl.innerText = gnssStatusMap[gCode] || "Searching...";
-        gnssEl.className = gCode === 1 ? "text-green-600 font-bold" :
-            (gCode === 2 || gCode === 4 ? "text-orange-500 font-bold" : "text-slate-400 font-bold");
-
-        const gsmVal = parseInt(data.gsm_signal_strength) || 0;
-        const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
-        bars.forEach((bar, i) => bar.classList.toggle('active', gsmVal > i));
-
-        document.getElementById('sats').innerText = data.satellites || 0;
-        document.getElementById('alt').innerText = (data.altitude || 0) + " m";
-        document.getElementById('operator').innerText = OPERATOR_MAP[data.active_gsm_operator] || data.active_gsm_operator || "N/A";
-
-        const v = parseFloat(data.battery_voltage_v) || 0;
-        document.getElementById('battery').innerText = v.toFixed(2) + " V";
-        document.getElementById('battery-alert').classList.toggle('hidden', v >= 10);
-        document.getElementById('status-text').innerText = "Signal Received: " + new Date().toLocaleTimeString();
-
-    } catch (e) {
-        clearDashboard("Connection Failed");
     }
+
+    deviceMarker.bindPopup(`<b>IMEI:</b> ${data.imei}<br>Last seen: ${new Date(parseInt(data.timestamp)).toLocaleTimeString()}`);
+
+    // 2. Status Panel Updates
+    document.getElementById('panel-imei').innerText = data.imei;
+    const timeStr = data.timestamp ? new Date(parseInt(data.timestamp)).toLocaleString() : "--";
+    document.getElementById('panel-ping').innerText = timeStr;
+
+
+    // Determine color class based on total strength
+    // --- 3. GSM Signal Logic ---
+    const gsmVal = parseInt(data.gsm_signal_strength) || 0;
+    const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
+
+    // Map the numeric value to a color name
+    let colorClass = "very-poor";
+    if (gsmVal >= 5) colorClass = "excellent";
+    else if (gsmVal >= 4) colorClass = "good";
+    else if (gsmVal >= 3) colorClass = "fair";
+    else if (gsmVal >= 2) colorClass = "poor";
+
+    bars.forEach((bar, i) => {
+        // 1. Always keep the base 'sig-bar' class so it doesn't disappear
+        // 2. Remove any previous color/active classes
+        bar.classList.remove('active', 'excellent', 'good', 'fair', 'poor', 'very-poor');
+
+        // 3. Add 'active' and the color class only if gsmVal is higher than this bar's index
+        if (gsmVal > i) {
+            bar.classList.add('active');
+            bar.classList.add(colorClass);
+        }
+    });
+
+    // 4. Telemetry Updates
+    document.getElementById('speed').innerText = Math.round(data.speed_gnss || 0);
+    const odoKm = (parseFloat(data.total_odometer_m) || 0) / 1000;
+    document.getElementById('odo').innerText = odoKm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " km";
+
+    const isMoving = data.speed_gnss > 2;
+    document.getElementById('movement').innerText = isMoving ? "Moving" : "Stationary";
+    document.getElementById('movement').className = `text-sm font-black uppercase ${isMoving ? 'text-blue-600' : 'text-slate-400'}`;
+
+    const ign = document.getElementById('ignition');
+    ign.innerText = data.ignition === 1 ? "IGNITION ON" : "IGNITION OFF";
+    ign.className = `px-3 py-1 rounded-full text-[9px] font-black uppercase ${data.ignition === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+
+    // 5. Diagnostics
+    const gnssStatusMap = { 0: "GNSS OFF", 1: "GNSS ON (Fix)", 2: "GNSS ON (No Fix)", 3: "Sleep", 4: "Invalid" };
+    document.getElementById('gnss-status').innerText = gnssStatusMap[data.gnss_status] || "Searching...";
+
+    document.getElementById('sats').innerText = data.satellites || 0;
+    document.getElementById('alt').innerText = (data.altitude || 0) + " m";
+    document.getElementById('operator').innerText = OPERATOR_MAP[data.active_gsm_operator] || data.active_gsm_operator || "N/A";
+
+    const v = parseFloat(data.battery_voltage_v) || 0;
+    document.getElementById('battery').innerText = v.toFixed(2) / 1000 + " V";
+    document.getElementById('battery-alert').classList.toggle('hidden', v >= 10);
 }
 
-clearDashboard("Ready");
-updateLive();
+// Fix map rendering on load
 setTimeout(() => map.invalidateSize(), 500);
