@@ -221,7 +221,7 @@ function updateDashboard(data) {
 
     // 1. Map Logic
     if (!deviceMarker) {
-        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [25, 41]) }).addTo(map);
+        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [45, 45]) }).addTo(map);
         map.setView(pos, 15);
         isFirstLoad = false;
     } else {
