@@ -6,6 +6,7 @@
 const TRIPS_API = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/production/trips";
 
 // 1. Initialize the Modal Map
+// We set a world view initially; it will be updated when a trip is clicked.
 const tripMap = L.map('trip-map').setView([0, 0], 2);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -13,29 +14,45 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18
 }).addTo(tripMap);
 
+// Layer group to hold the path and markers so we can clear them easily
 let pathLayer = L.layerGroup().addTo(tripMap);
 
 // 2. Global State & Page Init
 document.addEventListener('DOMContentLoaded', () => {
-    const savedId = localStorage.getItem('lastImei') || "";
+    // Load last used Device ID
+    const savedId = localStorage.getItem('lastDeviceId') || "2147483647";
     document.getElementById('device-id').value = savedId;
 
-    // Default "From" to beginning of today, "To" to now
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('from').value = today;
-    document.getElementById('to').value = today;
+    // Set default "To" date to today
+    document.getElementById('to').value = new Date().toISOString().split('T')[0];
 });
 
+/**
+ * Logs out the user by clearing tokens and redirecting to login page
+**/
+function logout() {
+    localStorage.removeItem('idToken');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = "loginPage.html";
+}
+
+/**
+ * Saves Device ID to local storage and refreshes the list
+ */
 function saveDeviceId() {
     const id = document.getElementById('device-id').value.trim();
     if (id) {
-        localStorage.setItem('lastImei', id);
+        localStorage.setItem('lastDeviceId', id);
         loadTrips();
     } else {
         alert("Please enter a valid Device ID");
     }
 }
 
+/**
+ * Formats seconds into a human-readable string (e.g., 1h 20m)
+ */
 function formatDuration(seconds) {
     if (!seconds || seconds < 0) return "0 min";
     const h = Math.floor(seconds / 3600);
@@ -44,32 +61,23 @@ function formatDuration(seconds) {
 }
 
 /**
- * UPDATED: Fetches trips using imei and millisecond timestamps
+ * Fetches trips from API and renders the cards
  */
 async function loadTrips() {
-    const imei = document.getElementById('device-id').value.trim();
-    const fromStr = document.getElementById('from').value;
-    const toStr = document.getElementById('to').value;
+    const id = document.getElementById('device-id').value.trim();
+    const from = document.getElementById('from').value;
+    const to = document.getElementById('to').value;
     const container = document.getElementById('trip-list');
 
-    if (!imei || !fromStr || !toStr) {
+    if (!id || !from || !to) {
         alert("Please ensure Device ID and both dates are selected.");
         return;
     }
 
-    // Convert "YYYY-MM-DD" to Start of Day and End of Day (Milliseconds)
-    const fromTs = new Date(fromStr + "T00:00:00").getTime();
-    const toTs = new Date(toStr + "T23:59:59").getTime();
-
     container.innerHTML = `<div class="col-span-full text-center py-20 text-slate-400 italic">Searching for trips...</div>`;
 
     try {
-        // Change: Use 'imei' instead of 'deviceId'
-        const url = `${TRIPS_API}?imei=${imei}&from=${fromTs}&to=${toTs}`;
-        const res = await fetch(url);
-
-        if (!res.ok) throw new Error("Server error");
-
+        const res = await fetch(`${TRIPS_API}?deviceId=${id}&from=${from}&to=${to}`);
         const trips = await res.json();
 
         if (!trips || trips.length === 0) {
@@ -92,7 +100,7 @@ async function loadTrips() {
                     <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Duration</p><p class="font-bold text-sm text-slate-800">${formatDuration(t.duration_sec)}</p></div>
                     <div class="bg-slate-50 p-2 rounded-xl"><p class="text-[9px] text-slate-400 uppercase font-bold">Stops</p><p class="font-bold text-sm text-slate-800">${stopCount}</p></div>
                 </div>
-                <div class="text-[10px] text-slate-500 flex justify-between pt-2">
+                <div class="text-[10px] text-slate-500 flex justify-between">
                     <span>Peak: ${t.max_speed} km/h</span>
                 </div>
                 <button class="w-full mt-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition">View Route Path</button>
@@ -105,7 +113,9 @@ async function loadTrips() {
     }
 }
 
-// viewTrip and closeMap functions remain unchanged...
+/**
+ * Handles Modal Display and Map Centering Fix
+ */
 function viewTrip(trip) {
     document.getElementById('map-modal').classList.remove('hidden');
     pathLayer.clearLayers();
@@ -115,20 +125,24 @@ function viewTrip(trip) {
     const latlngs = trip.points.map(p => [p.lat, p.lng]);
     const polyline = L.polyline(latlngs, { color: '#2563eb', weight: 5, opacity: 0.7 }).addTo(pathLayer);
 
+    // Updated helper to handle iconAnchor AND popupAnchor
     const createCenteredIcon = (colorClass, size) => L.divIcon({
         className: '',
         html: `<img src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png" class="${colorClass}" style="width:${size[0]}px; height:${size[1]}px;">`,
         iconSize: size,
-        iconAnchor: [size[0] / 2, size[1]],
-        popupAnchor: [0, -size[1]]
+        iconAnchor: [size[0] / 2, size[1]], // Tip of the pin
+        popupAnchor: [0, -size[1]]           // Top center of the pin
     });
 
+    // Start Marker
     L.marker(latlngs[0], { icon: createCenteredIcon('marker-green', [25, 41]) })
         .addTo(pathLayer).bindPopup(`<b>Start</b>`).openPopup();
 
+    // End Marker
     L.marker(latlngs[latlngs.length - 1], { icon: createCenteredIcon('marker-red', [25, 41]) })
         .addTo(pathLayer).bindPopup(`<b>End</b>`);
 
+    // Stops
     if (trip.stopSegments) {
         trip.stopSegments.forEach((s, idx) => {
             L.marker([s.location.lat, s.location.lng], { icon: createCenteredIcon('marker-orange', [20, 32]) })
@@ -142,6 +156,9 @@ function viewTrip(trip) {
     }, 250);
 }
 
+/**
+ * Closes the modal
+ */
 function closeMap() {
     document.getElementById('map-modal').classList.add('hidden');
 }

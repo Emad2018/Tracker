@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-900">    
+    <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        
+            <div class="flex items-center space-x-4">
+
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
+                    class="h-10 w-auto">
+                <div class="flex flex-col">
+                    <span class="font-black text-lg leading-tight tracking-tight">TW <span
+                            class="text-pink-400">FleetMarschall</span></span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
+                        Intelligence</span>
+                </div>
+
+            </div>
+    </nav>
+    <main class="flex flex-1">
+        <div class="flex flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+            <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo" class="mx-auto h-10 w-auto" />
+                <h2 class="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900">Sign in to your account</h2>
+            </div>
+
+            <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+                <form id="loginForm" method="POST" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm/6 font-medium text-gray-900">Email address</label>
+                        <div class="mt-2">
+                        <input id="email" type="email" placeholder="Enter your email" name="email" required autocomplete="email" class="block w-full border border-slate-700/50 rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between">
+                        <label for="password" class="block text-sm/6 font-medium text-gray-900">Password</label>
+                        <div class="text-sm">
+                            <a href="/forgetPassword.html" class="font-semibold text-indigo-600 hover:text-indigo-500">Forgot password?</a>
+                        </div>
+                        </div>
+                        <div class="mt-2 relative">
+                        <input id="password" type="password" placeholder="Enter your password" name="password" required autocomplete="current-password" class="block w-full border border-slate-700/50 rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6" />
+                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600">
+                            👁
+                            </button>    
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Sign in</button>
+                    </div>
+                </form>
+                <p id="authError" class="hidden mt-3 text-sm text-red-600"></p>
+
+            </div>
+        </div>
+        <div class="hidden lg:block lg:w-1/2 relative">
+            <img
+                src="https://res.cloudinary.com/dx20j6wpl/image/upload/v1767697211/1758802651165_zuutys.jpg"
+                alt="Workspace"
+                class="absolute inset-0 h-full w-full object-cover"
+            />
+        </div>
+    </main>
+    <footer
+        class="bg-white border-t border-slate-200 p-4 px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-8">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
+                class="h-6 opacity-80">
+        </div>
+    </footer>
+
+
+    <script>
+        // Toggle password visibility
+        const passwordInput = document.getElementById('password');
+        const toggleButton = document.getElementById('togglePassword');
+
+        toggleButton.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        });
+    </script>
+    <!-- Cognito SDK -->
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+
+     <script src="/js/loginPage.js"></script>
+    
+
+</body>
+</html>
