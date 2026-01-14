@@ -89,3 +89,46 @@ function showMessage(msg, id) {
     el.textContent = "";
   }, 2000);
 }
+
+
+// Toggle eye buttons
+function setupPasswordToggle(passwordId, toggleId){
+  const passwordInput = document.getElementById(passwordId);
+  const toggleButton = document.getElementById(toggleId);
+  if(!passwordInput || !toggleButton) return;
+  toggleButton.addEventListener("click", ()=>{
+    const type = passwordInput.type==="password"?"text":"password";
+    passwordInput.type = type;
+    toggleButton.textContent = type==="password"?"👁":"🙈";
+  });
+}
+setupPasswordToggle("newPassword","toggleNewPassword");
+setupPasswordToggle("confirmPassword","toggleConfirmPassword");
+
+// Password rules live
+const rules = {
+  length: document.getElementById("rule-length"),
+  upper: document.getElementById("rule-upper"),
+  lower: document.getElementById("rule-lower"),
+  number: document.getElementById("rule-number"),
+  special: document.getElementById("rule-special"),
+};
+document.getElementById("newPassword").addEventListener("input", ()=>{
+  const v = document.getElementById("newPassword").value;
+  setRule(rules.length, v.length>=8);
+  setRule(rules.upper, /[A-Z]/.test(v));
+  setRule(rules.lower, /[a-z]/.test(v));
+  setRule(rules.number, /[0-9]/.test(v));
+  setRule(rules.special, /[!@#$%^&*(),.?":{}|<>]/.test(v));
+});
+function setRule(el,valid){
+  if(valid){
+    el.classList.remove("text-gray-600");
+    el.classList.add("text-green-600","font-medium");
+    el.innerHTML = "✔️ "+el.innerText.replace("✔️ ","").replace("• ","");
+  }else{
+    el.classList.remove("text-green-600","font-medium");
+    el.classList.add("text-gray-600");
+    el.innerHTML = "• "+el.innerText.replace("✔️ ","").replace("• ","");
+  }
+}

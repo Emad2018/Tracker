@@ -13,6 +13,27 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+/**
+ * Format a JS Date object to "DD-MM-YYYY hh:mm:ss AM/PM"
+ * @param {Date|string} dateInput - Date object or ISO string
+ * @returns {string} Formatted date string
+ */
+function formatDateTime(dateInput) {
+  const d = new Date(dateInput);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+
+  const h24 = d.getHours();
+  const h12 = h24 % 12 || 12;
+  const m = d.getMinutes().toString().padStart(2, '0');
+  const s = d.getSeconds().toString().padStart(2, '0');
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+
+  return `${day}-${month}-${year} ${h12}:${m}:${s} ${ampm}`;
+}
+
+
 window.logout =function() {
     localStorage.removeItem('idToken');
     localStorage.removeItem('accessToken');
@@ -40,11 +61,19 @@ async function loadProfile() {
     headers: { "Authorization": "Bearer " + localStorage.getItem("idToken") }
   });
   const profile = await res.json();
+  console.log("this is profile",profile);
+    const email = profile.email || "No email";
+    const username = email.split("@")[0];
 
-  document.getElementById("username").innerText = profile.name || "User Name";
+  document.getElementById("username").innerText = username;
   document.getElementById("email").innerText = profile.email || "No email";
-  document.getElementById("user-id").innerText = profile.userId;
-  document.getElementById("created").innerText = new Date(profile.createdAt).toLocaleString();
+  const avatarLetterEl = document.getElementById("avatar-letter");
+    if (avatarLetterEl) {
+      avatarLetterEl.innerText = username.charAt(0).toUpperCase();
+    }
+  // document.getElementById("user-id").innerText = profile.userId;
+  document.getElementById("created").innerText =formatDateTime(profile.createdAt);
+
 }
 
 
@@ -72,32 +101,39 @@ async function loadDevices() {
     const status = checkDeviceActive(device); // calculate real status
 
     const row = document.createElement("div");
-    row.className = "grid grid-cols-4 items-center bg-slate-50 border border-slate-100 rounded-xl p-3 hover:shadow-md transition";
+    row.className = "grid grid-cols-[2fr_1fr_2fr_3fr] items-center bg-slate-50 border border-slate-100 rounded-xl p-3 hover:shadow-md transition";
 
     row.innerHTML = `
-        <span class="font-mono text-sm font-black text-slate-800">${device.deviceId}</span>
+      <span class="font-mono text-sm font-black text-slate-800">${device.deviceId}</span>
 
-        <span class="text-[10px] font-black px-2 py-1 rounded-full 
-        ${status === "ACTIVE" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}">
-        ${status}
-        </span>
+      <span class="text-[10px] font-black px-2 py-1 rounded-full 
+      ${status ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}">
+      ${status ? "ACTIVE" : "INACTIVE"}
+      </span>
 
-        <span class="text-[11px] font-bold text-slate-600">
-        ${new Date(device.lastUpdate).toLocaleString()}
-        </span>
+      <span class="text-[11px] font-bold text-slate-600">
+      ${formatDateTime(device.lastUpdate)}
+      </span>
 
-        <div class="flex gap-2 justify-end">
-        <a href="../html/live.html?device=${device.deviceId}"
-            class="text-[10px] font-black bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg transition">
-            TRACK
-        </a>
+      <div class="flex gap-2 justify-end">
+          <a href="../html/live.html?device=${device.deviceId}"
+              class="text-[10px] font-black bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
+              TRACK
+          </a>
 
-        <button onclick="deleteDevice('${device.deviceId}')"
-            class="text-[10px] font-black bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-lg transition">
-            DELETE
-        </button>
-        </div>
-    `;
+          <a href="../html/trips.html?device=${device.deviceId}"
+              class="text-[10px] font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
+              HISTORY
+          </a>
+
+          <button onclick="deleteDevice('${device.deviceId}')"
+              class="text-[10px] font-black bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
+              DELETE
+          </button>
+      </div>
+  `;
+
+
 
     list.appendChild(row);
     });

@@ -36,7 +36,13 @@ let deviceMarker = null;
 let subscription = null;
 let isFirstLoad = true;
 
+const params = new URLSearchParams(window.location.search);
+const deviceId = params.get('device');
+
 const deviceInput = document.getElementById('device-id');
+if (deviceInput) deviceInput.value = deviceId;
+
+
 const statusBadge = document.getElementById('status-badge');
 const footerMsg = document.getElementById('footer-msg');
 
@@ -48,7 +54,7 @@ window.logout =function() {
 }
 
 // --- INIT ---
-const storedImei = localStorage.getItem('lastImei') || "";
+const storedImei = deviceId || localStorage.getItem('lastImei') || "";
 if (storedImei) {
     deviceInput.value = storedImei;
     initConnection(storedImei);
@@ -221,7 +227,7 @@ function updateDashboard(data) {
 
     // 1. Map Logic
     if (!deviceMarker) {
-        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [45, 45]) }).addTo(map);
+        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [75, 75]) }).addTo(map);
         map.setView(pos, 15);
         isFirstLoad = false;
     } else {
@@ -238,9 +244,10 @@ function updateDashboard(data) {
 
     // 2. Status Panel Updates
     document.getElementById('panel-imei').innerText = data.imei;
-    const timeStr = data.timestamp ? new Date(parseInt(data.timestamp)).toLocaleString() : "--";
-    document.getElementById('panel-ping').innerText = timeStr;
-
+    // const timeStr = data.timestamp ? new Date(parseInt(data.timestamp)).toLocaleString() : "--";
+    
+    //change to custom format
+    document.getElementById('panel-ping').innerText = data.timestamp ? (()=>{const d=new Date(+data.timestamp),h=d.getHours()%12||12,m=d.getMinutes().toString().padStart(2,'0'),s=d.getSeconds().toString().padStart(2,'0'),ampm=d.getHours()>=12?'PM':'AM'; return `${d.getDate()}-${d.getMonth()+1}-${d.getFullYear()} ${h}:${m}:${s} ${ampm}`})() : "--";
 
     // Determine color class based on total strength
     // --- 3. GSM Signal Logic ---

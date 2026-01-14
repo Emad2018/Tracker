@@ -83,7 +83,15 @@ function loginUser(email, password) {
 
       showAuthError(msg);
     },
+      newPasswordRequired: (userAttributes, requiredAttributes) => {
+    // Redirect user to admin.html if password change is required
+        localStorage.setItem("cognitoUserAttributes", JSON.stringify(userAttributes));
+        localStorage.setItem("cognitoUserName", cognitoUser.getUsername());
+       window.location.href = "../html/admin.html";
+      }
   })
 }
+
+
 
 

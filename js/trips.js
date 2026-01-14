@@ -23,15 +23,42 @@ window.logout =function() {
 }
 
 
+// // 2. Global State & Page Init
+// document.addEventListener('DOMContentLoaded', () => {
+//     const savedId = localStorage.getItem('lastImei') || "";
+//     document.getElementById('device-id').value = savedId;
+
+//     // Default "From" to beginning of today, "To" to now
+//     const today = new Date().toISOString().split('T')[0];
+//     document.getElementById('from').value = today;
+//     document.getElementById('to').value = today;
+// });
+
 // 2. Global State & Page Init
 document.addEventListener('DOMContentLoaded', () => {
-    const savedId = localStorage.getItem('lastImei') || "";
-    document.getElementById('device-id').value = savedId;
+    // 1️⃣ اقرأ الـ deviceId من URL query string
+    const params = new URLSearchParams(window.location.search);
+    const deviceIdFromProfile = params.get('device');
+
+    // 2️⃣ خزن في input و localStorage لو موجود
+    if (deviceIdFromProfile) {
+        document.getElementById('device-id').value = deviceIdFromProfile;
+        localStorage.setItem('lastImei', deviceIdFromProfile);
+    } else {
+        // fallback على localStorage لو محدش جاي من profile
+        const savedId = localStorage.getItem('lastImei') || "";
+        document.getElementById('device-id').value = savedId;
+    }
 
     // Default "From" to beginning of today, "To" to now
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('from').value = today;
     document.getElementById('to').value = today;
+
+    // لو عايز، ممكن تعمل loadTrips تلقائي بعد ما يحط الـ deviceId
+    if (document.getElementById('device-id').value) {
+        loadTrips();
+    }
 });
 
 function saveDeviceId() {
