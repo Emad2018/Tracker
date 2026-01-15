@@ -3,10 +3,13 @@ import { UI } from './ui-utils.js';
 import { CONFIG } from './config.js';
 
 let tempCognitoUser = null;
-
+let tempEmail = "";        // Stored for Account Verification
 document.addEventListener("DOMContentLoaded", () => {
   UI.togglePassword("password", "togglePassword");
+  UI.togglePassword("newPassword", "toggleNewPassword");
+  UI.togglePassword("confirmPassword", "toggleConfirmPassword");
 
+  setupPasswordRules("newPassword", "passwordRules");
   document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     UI.setLoading("signInBtn", true, "Sign in");

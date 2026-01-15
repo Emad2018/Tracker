@@ -23,6 +23,27 @@ export const AuthService = {
             });
         });
     },
+    confirmSignUp: (username, code) => {
+        const userData = { Username: username, Pool: userPool };
+        const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+        return new Promise((resolve, reject) => {
+            cognitoUser.confirmRegistration(code, true, (err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+    },
+
+    resendCode: (username) => {
+        const userData = { Username: username, Pool: userPool };
+        const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+        return new Promise((resolve, reject) => {
+            cognitoUser.resendConfirmationCode((err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+            });
+        });
+    },
     saveSession: (result) => {
         localStorage.setItem("idToken", result.getIdToken().getJwtToken());
         localStorage.setItem("accessToken", result.getAccessToken().getJwtToken());

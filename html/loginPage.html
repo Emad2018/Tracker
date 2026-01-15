@@ -3,41 +3,136 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Sign In</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | TW FleetMarschall</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
 </head>
 
-<body class="bg-slate-50 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <div id="loginContainer">
-            <h2 class="text-2xl font-bold mb-6">Sign In</h2>
-            <form id="loginForm" class="space-y-4">
-                <input id="email" type="email" placeholder="Email" required class="w-full border p-2 rounded">
-                <div class="relative">
-                    <input id="password" type="password" placeholder="Password" required
-                        class="w-full border p-2 rounded">
-                    <button type="button" id="togglePassword" class="absolute right-3 top-2">👁</button>
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-900">
+    <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <a href="../index.html">
+            <div class="flex items-center space-x-4">
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
+                    class="h-10 w-auto">
+                <div class="flex flex-col">
+                    <span class="font-black text-lg leading-tight tracking-tight">TW <span
+                            class="text-pink-400">FleetMarschall</span></span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
+                        Intelligence</span>
                 </div>
-                <button id="signInBtn" class="w-full bg-indigo-600 text-white py-2 rounded">Sign In</button>
-                <p id="authError" class="text-red-500 text-sm hidden"></p>
-                <a href="forgetPassword.html" class="text-indigo-600 text-sm inline-block mt-2">Forgot Password?</a>
-            </form>
+            </div>
+        </a>
+    </nav>
+
+    <main class="flex-grow flex h-full flex-col lg:flex-row">
+
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+            <div class="w-full max-w-md">
+
+                <div id="loginContainer">
+                    <h2 class="text-3xl font-bold mb-2 text-slate-800">Welcome Back</h2>
+                    <p class="text-slate-500 mb-8">Please enter your details to access your fleet.</p>
+
+                    <form id="loginForm" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Email Address</label>
+                            <input id="email" type="email" placeholder="name@company.com" required
+                                class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">Password</label>
+                            <div class="relative">
+                                <input id="password" type="password" placeholder="••••••••" required
+                                    class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                                <button type="button" id="togglePassword"
+                                    class="absolute right-3 top-3 text-slate-400 hover:text-slate-600">👁</button>
+                            </div>
+                        </div>
+
+                        <button id="signInBtn"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-indigo-200 transition-all">
+                            Sign In
+                        </button>
+
+                        <p id="authError" class="text-red-500 text-sm bg-red-50 p-3 rounded hidden"></p>
+
+                        <div class="text-center">
+                            <a href="forgetPassword.html"
+                                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Forgot your
+                                password?</a>
+                        </div>
+                    </form>
+                </div>
+                <div id="verificationContainer" class="hidden">
+                    <h2 class="text-2xl font-bold mb-2">Verify Your Account</h2>
+                    <p class="text-slate-500 mb-6 text-sm">Please enter the code sent to your email.</p>
+                    <form id="verifyForm" class="space-y-4">
+                        <input id="verifyCode" type="text" placeholder="6-digit code" required
+                            class="w-full border border-slate-300 p-3 rounded-lg text-center tracking-[0.5em] font-bold">
+                        <button id="verifyBtn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg">Verify
+                            & Sign In</button>
+                        <button type="button" id="resendBtn" class="w-full text-indigo-600 text-sm font-medium">Resend
+                            Code</button>
+                    </form>
+                    <p id="verifyError" class="text-red-500 text-sm mt-3 hidden"></p>
+                </div>
+                <div id="forceChangePasswordContainer" class="hidden animate-fade-in">
+                    <h2 class="text-2xl font-bold mb-2 text-orange-600">Secure Your Account</h2>
+                    <p class="text-slate-500 text-sm mb-6">This is your first login. Please set a permanent password to
+                        continue.</p>
+
+                    <form id="newPasswordForm" class="space-y-4">
+                        <input id="newPassword" type="password" placeholder="New Password" required
+                            class="w-full border p-3 rounded-lg">
+
+                        <ul id="passwordRules" class="mt-2 text-sm space-y-1 text-gray-600">
+                            <li id="rule-length">• At least 8 characters</li>
+                            <li id="rule-upper">• Contains uppercase letter</li>
+                            <li id="rule-lower">• Contains lowercase letter</li>
+                            <li id="rule-number">• Contains number</li>
+                            <li id="rule-special">• Contains special character (!@#$...)</li>
+                        </ul>
+
+                        <input id="confirmPassword" type="password" placeholder="Confirm Password" required
+                            class="w-full border p-3 rounded-lg">
+                        <button id="updatePassBtn" class="w-full bg-green-600 text-white py-3 rounded-lg">Update &
+                            Login</button>
+                    </form>
+                </div>
+
+            </div>
         </div>
 
-        <div id="forceChangePasswordContainer" class="hidden">
-            <h2 class="text-xl font-bold mb-2">Set Permanent Password</h2>
-            <p class="text-gray-500 text-sm mb-4">You are logging in for the first time.</p>
-            <form id="newPasswordForm" class="space-y-4">
-                <input id="newPassword" type="password" placeholder="New Password" required
-                    class="w-full border p-2 rounded">
-                <input id="confirmPassword" type="password" placeholder="Confirm Password" required
-                    class="w-full border p-2 rounded">
-                <button id="updatePassBtn" class="w-full bg-green-600 text-white py-2 rounded">Update & Login</button>
-                <p id="passwordError" class="text-red-500 text-sm hidden"></p>
-            </form>
+        <div class="hidden lg:block lg:w-1/2 relative overflow-hidden bg-indigo-900">
+            <img src="https://res.cloudinary.com/dx20j6wpl/image/upload/v1767697211/1758802651165_zuutys.jpg"
+                alt="Fleet Management" class="absolute inset-0 w-full h-full object-fill opacity-60">
+            <div class="absolute inset-0 flex items-center justify-center p-12">
+                <div class="text-white max-w-lg">
+                    <h1 class="text-5xl font-black mb-6 leading-tight">Smart Intelligence for your <span
+                            class="text-pink-400">Fleet.</span></h1>
+                    <p class="text-xl text-indigo-100 italic border-l-4 border-pink-400 pl-4">"Real-time tracking and
+                        analytics to keep your operations moving faster."</p>
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-8">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
+                class="h-6 opacity-60 hover:opacity-100 transition">
+            <p class="text-xs text-slate-400">© 2025 Techno Welle. All rights reserved.</p>
+        </div>
+        <div class="flex space-x-6 text-xs text-slate-500 font-medium">
+            <a href="https://techno-welle.com/privacy-policy-en/" class="hover:text-indigo-600">Privacy Policy</a>
+            <a href="https://techno-welle.com/impressum-legal-details/" class="hover:text-indigo-600">Impressum/Legal
+                Details</a>
+            <a href="https://techno-welle.com/contact/" class="hover:text-indigo-600">Contact</a>
+        </div>
+    </footer>
+
     <script type="module" src="../js/loginPage.js"></script>
 </body>
 
