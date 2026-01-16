@@ -25,83 +25,71 @@
         </a>
     </nav>
 
-    <main class="flex-grow flex h-full flex-col lg:flex-row">
+    <main class="flex flex-1">
+        <div class="flex flex-1 flex-col justify-center px-6 py-12 lg:px-8 bg-white w-full max-w-md mx-auto">
 
-        <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
-            <div class="w-full max-w-md">
-
-                <div id="loginContainer">
-                    <h2 class="text-3xl font-bold mb-2 text-slate-800">Welcome Back</h2>
-                    <p class="text-slate-500 mb-8">Please enter your details to access your fleet.</p>
-
-                    <form id="loginForm" class="space-y-5">
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Email Address</label>
-                            <input id="email" type="email" placeholder="name@company.com" required
-                                class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold mb-1">Password</label>
-                            <div class="relative">
-                                <input id="password" type="password" placeholder="••••••••" required
-                                    class="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
-                                <button type="button" id="togglePassword"
-                                    class="absolute right-3 top-3 text-slate-400 hover:text-slate-600">👁</button>
-                            </div>
-                        </div>
-
-                        <button id="signInBtn"
-                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-indigo-200 transition-all">
-                            Sign In
-                        </button>
-
-                        <p id="authError" class="text-red-500 text-sm bg-red-50 p-3 rounded hidden"></p>
-
-                        <div class="text-center">
-                            <a href="forgetPassword.html"
-                                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Forgot your
-                                password?</a>
-                        </div>
-                    </form>
+            <div id="loginContainer">
+                <h2 class="text-2xl font-bold mb-6 text-gray-900">Sign in</h2>
+                <form id="loginForm" class="space-y-4">
+                    <input id="email" type="email" placeholder="Email" required
+                        class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+                    <div class="relative">
+                        <input id="password" type="password" placeholder="Password" required
+                            class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none">
+                        <button type="button" id="togglePassword"
+                            class="absolute right-3 top-3 text-gray-400">👁</button>
+                    </div>
+                    <button id="signInBtn"
+                        class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition">Sign
+                        in</button>
+                </form>
+                <p id="authError" class="hidden mt-3 text-sm text-red-600 text-center"></p>
+                <div class="mt-4 text-center">
+                    <a href="forgetPassword.html" class="text-sm text-indigo-600 hover:underline">Forgot password?</a>
                 </div>
-                <div id="verificationContainer" class="hidden">
-                    <h2 class="text-2xl font-bold mb-2">Verify Your Account</h2>
-                    <p class="text-slate-500 mb-6 text-sm">Please enter the code sent to your email.</p>
-                    <form id="verifyForm" class="space-y-4">
-                        <input id="verifyCode" type="text" placeholder="6-digit code" required
-                            class="w-full border border-slate-300 p-3 rounded-lg text-center tracking-[0.5em] font-bold">
-                        <button id="verifyBtn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg">Verify
-                            & Sign In</button>
-                        <button type="button" id="resendBtn" class="w-full text-indigo-600 text-sm font-medium">Resend
-                            Code</button>
-                    </form>
-                    <p id="verifyError" class="text-red-500 text-sm mt-3 hidden"></p>
-                </div>
-                <div id="forceChangePasswordContainer" class="hidden animate-fade-in">
-                    <h2 class="text-2xl font-bold mb-2 text-orange-600">Secure Your Account</h2>
-                    <p class="text-slate-500 text-sm mb-6">This is your first login. Please set a permanent password to
-                        continue.</p>
+            </div>
 
-                    <form id="newPasswordForm" class="space-y-4">
+            <div id="verificationContainer" class="hidden">
+                <h2 class="text-2xl font-bold mb-2">Verify Your Email</h2>
+                <p class="text-sm text-gray-500 mb-6">Please enter the code sent to your email to activate your account.
+                </p>
+                <form id="verifyForm" class="space-y-4">
+                    <input id="verifyCode" type="text" placeholder="Verification Code" required
+                        class="w-full border p-3 rounded-lg text-center font-bold tracking-widest focus:ring-2 focus:ring-indigo-600 outline-none">
+                    <button id="verifyBtn" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">Verify &
+                        Sign In</button>
+                    <button type="button" id="resendBtn"
+                        class="w-full text-indigo-600 text-sm mt-4 hover:underline">Resend Code</button>
+                </form>
+                <p id="verifyError" class="hidden mt-3 text-sm text-red-600 text-center"></p>
+            </div>
+
+            <div id="forceChangePasswordContainer" class="hidden">
+                <h2 class="text-2xl font-bold mb-6">Setup New Password</h2>
+                <form id="newPasswordForm" class="space-y-4">
+                    <div class="relative">
                         <input id="newPassword" type="password" placeholder="New Password" required
                             class="w-full border p-3 rounded-lg">
-
-                        <ul id="passwordRules" class="mt-2 text-sm space-y-1 text-gray-600">
-                            <li id="rule-length">• At least 8 characters</li>
-                            <li id="rule-upper">• Contains uppercase letter</li>
-                            <li id="rule-lower">• Contains lowercase letter</li>
-                            <li id="rule-number">• Contains number</li>
-                            <li id="rule-special">• Contains special character (!@#$...)</li>
-                        </ul>
-
+                        <button type="button" id="toggleNewPassword"
+                            class="absolute right-3 top-3 text-gray-400">👁</button>
+                    </div>
+                    <ul id="passwordRules" class="mt-2 text-xs space-y-1 text-gray-600">
+                        <li id="rule-length">• At least 8 characters</li>
+                        <li id="rule-upper">• Contains uppercase letter</li>
+                        <li id="rule-lower">• Contains lowercase letter</li>
+                        <li id="rule-number">• Contains number</li>
+                        <li id="rule-special">• Contains special character</li>
+                    </ul>
+                    <div class="relative">
                         <input id="confirmPassword" type="password" placeholder="Confirm Password" required
                             class="w-full border p-3 rounded-lg">
-                        <button id="updatePassBtn" class="w-full bg-green-600 text-white py-3 rounded-lg">Update &
-                            Login</button>
-                    </form>
-                </div>
-
+                        <button type="button" id="toggleConfirmPassword"
+                            class="absolute right-3 top-3 text-gray-400">👁</button>
+                    </div>
+                    <button id="updatePassBtn" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold">Update
+                        Password</button>
+                </form>
+                <p id="passwordError" class="hidden mt-3 text-sm text-red-600 text-center"></p>
             </div>
         </div>
 
@@ -122,14 +110,8 @@
     <footer class="bg-white border-t border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex items-center space-x-8">
             <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
-                class="h-6 opacity-60 hover:opacity-100 transition">
+                class="h-6 opacity-60">
             <p class="text-xs text-slate-400">© 2025 Techno Welle. All rights reserved.</p>
-        </div>
-        <div class="flex space-x-6 text-xs text-slate-500 font-medium">
-            <a href="https://techno-welle.com/privacy-policy-en/" class="hover:text-indigo-600">Privacy Policy</a>
-            <a href="https://techno-welle.com/impressum-legal-details/" class="hover:text-indigo-600">Impressum/Legal
-                Details</a>
-            <a href="https://techno-welle.com/contact/" class="hover:text-indigo-600">Contact</a>
         </div>
     </footer>
 

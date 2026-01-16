@@ -9,6 +9,7 @@ export const UI = {
             btn.textContent = type === 'password' ? '👁' : '👁‍🗨';
         });
     },
+
     showError: (elementId, message) => {
         const el = document.getElementById(elementId);
         if (el) {
@@ -16,8 +17,10 @@ export const UI = {
             el.classList.remove('hidden');
         }
     },
+
     hide: (id) => document.getElementById(id)?.classList.add('hidden'),
     show: (id) => document.getElementById(id)?.classList.remove('hidden'),
+
     setLoading: (buttonId, isLoading, defaultText) => {
         const btn = document.getElementById(buttonId);
         if (!btn) return;
@@ -25,9 +28,10 @@ export const UI = {
         btn.textContent = isLoading ? "Processing..." : defaultText;
         btn.classList.toggle("opacity-50", isLoading);
     },
-    setupPasswordRules: (inputId, rulesContainerId) => {
+
+    setupPasswordRules: (inputId, containerId) => {
         const input = document.getElementById(inputId);
-        const container = document.getElementById(rulesContainerId);
+        const container = document.getElementById(containerId);
         if (!input || !container) return;
 
         const rules = {
@@ -38,26 +42,24 @@ export const UI = {
             special: container.querySelector("#rule-special"),
         };
 
-        const setRule = (el, valid) => {
+        const updateStatus = (el, valid) => {
             if (!el) return;
             if (valid) {
-                el.classList.remove("text-gray-600");
                 el.classList.add("text-green-600", "font-medium");
                 el.innerHTML = "✔️ " + el.innerText.replace("✔️ ", "").replace("• ", "");
             } else {
                 el.classList.remove("text-green-600", "font-medium");
-                el.classList.add("text-gray-600");
                 el.innerHTML = "• " + el.innerText.replace("✔️ ", "").replace("• ", "");
             }
         };
 
         input.addEventListener("input", () => {
             const v = input.value;
-            setRule(rules.length, v.length >= 8);
-            setRule(rules.upper, /[A-Z]/.test(v));
-            setRule(rules.lower, /[a-z]/.test(v));
-            setRule(rules.number, /[0-9]/.test(v));
-            setRule(rules.special, /[!@#$%^&*(),.?":{}|<>]/.test(v));
+            updateStatus(rules.length, v.length >= 8);
+            updateStatus(rules.upper, /[A-Z]/.test(v));
+            updateStatus(rules.lower, /[a-z]/.test(v));
+            updateStatus(rules.number, /[0-9]/.test(v));
+            updateStatus(rules.special, /[!@#$%^&*(),.?":{}|<>]/.test(v));
         });
     }
 };
