@@ -8,20 +8,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        #trip-map {
-            height: 500px;
-            width: 100%;
-            border-radius: 12px;
-        }
-
-        .nav-bg {
-            background-color: #0b1426;
-        }
-
-        .input-bg {
-            background-color: #1a253d;
-        }
-
         /* Custom Marker Colors using CSS Hue-Rotate */
         .marker-green {
             filter: hue-rotate(260deg) brightness(90%) saturate(150%);
@@ -42,8 +28,8 @@
 </head>
 
 <body class="bg-slate-50 min-h-screen flex flex-col">
-    <nav class="nav-bg text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
-        <a href="index.html">
+    <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <a href="live.html">
             <div class="flex items-center space-x-4">
                 <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
                     class="h-10 w-auto">
@@ -56,8 +42,17 @@
             </div>
         </a>
         <div class="flex items-center space-x-6">
-            <div class="flex input-bg rounded-xl p-1 shadow-inner">
-                <a href="index.html"
+            <div class="flex">
+                <button onclick="logout()"
+                    class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">LOGOUT</button>
+            </div>
+            <div class="flex">
+                <a href="../html/profile.html"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">
+                PROFILE</a>    
+            </div>      
+            <div class="flex bg-[#1a253d] rounded-xl p-1 shadow-inner">
+                <a href="../html/live.html"
                     class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">LIVE
                     VIEW</a>
                 <a href="#"
@@ -65,7 +60,7 @@
                     HISTORY</a>
             </div>
 
-            <div class="flex items-center input-bg border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
+            <div class="flex items-center bg-[#1a253d] border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
                 <div class="flex flex-col mr-4">
                     <label class="text-[8px] font-black text-slate-500 uppercase">Tracking Target</label>
                     <input type="text" id="device-id"
@@ -94,12 +89,12 @@
     </main>
 
     <div id="map-modal"
-        class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        class="hidden fixed inset-0 bg-slate-900/80 z-[2000] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white w-full max-w-5xl rounded-3xl p-6 relative shadow-2xl">
             <button onclick="closeMap()"
                 class="absolute top-4 right-6 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
             <h3 class="font-bold text-xl text-slate-800 mb-4">Trip Route Details</h3>
-            <div id="trip-map"></div>
+            <div id="trip-map" class="h-[500px] w-full rounded-xl"></div>
         </div>
     </div>
     <footer
@@ -110,7 +105,7 @@
         </div>
 
     </footer>
-    <script src="trips.js"></script>
+    <script src="../js/trips.js"></script>
 </body>
 
 </html>

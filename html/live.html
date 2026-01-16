@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tracking | TW FleetMarschall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 70vh;
+            width: 100%;
+            border-radius: 16px;
+            z-index: 1;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Status Panel Styles */
+        .status-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f1f5f9;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-live {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+        }
+
+        .badge-offline {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .badge-waiting {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+            animation: pulse-gray 2s infinite;
+        }
+
+        .badge-notfound {
+            background: #475569;
+            color: #f8fafc;
+            border: 1px solid #334155;
+        }
+
+        @keyframes pulse-gray {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .info-label {
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .info-val {
+            color: #0f172a;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        /* General Styles */
+        .nav-bg {
+            background-color: #0b1426;
+        }
+
+        .input-bg {
+            background-color: #1a253d;
+        }
+
+        .marker-blue {
+            filter: hue-rotate(0deg) brightness(100%);
+        }
+
+        .sig-bar {
+            width: 6px;
+            margin-right: 2px;
+            background-color: #e2e8f0;
+            /* Light gray base */
+            border-radius: 1px;
+            transition: all 0.3s ease;
+        }
+
+        /* Color definitions for active bars */
+        .sig-bar.active.excellent {
+            background-color: #22c55e;
+        }
+
+        /* Green */
+        .sig-bar.active.good {
+            background-color: #84cc16;
+        }
+
+        /* Light Green */
+        .sig-bar.active.fair {
+            background-color: #eab308;
+        }
+
+        /* Yellow */
+        .sig-bar.active.poor {
+            background-color: #f97316;
+        }
+
+        /* Orange */
+        .sig-bar.active.very-poor {
+            background-color: #ef4444;
+        }
+
+        /* Red */
+
+        /* Red for weak */
+    </style>
+</head>
+<script>
+    // =====================
+    // Authentication Check
+    // =====================
+
+    if (!localStorage.getItem("idToken")) {
+    window.location.href = "../html/loginPage.html"
+    }
+
+</script>
+
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-900">
+
+    <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <a href="#">
+            <div class="flex items-center space-x-4">
+
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
+                    class="h-10 w-auto">
+                <div class="flex flex-col">
+                    <span class="font-black text-lg leading-tight tracking-tight">TW <span
+                            class="text-pink-400">FleetMarschall</span></span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
+                        Intelligence</span>
+                </div>
+
+            </div>
+        </a>
+        <div class="flex items-center space-x-6">
+            <div class="flex">
+                <button onclick="logout()"
+                    class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">LOGOUT</button>
+            </div>
+            <div class="flex">
+                <a href="../html/profile.html"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">
+                PROFILE</a>    
+            </div>            
+            <div class="flex bg-[#1a253d] rounded-xl p-1 shadow-inner">
+                <a href="#"
+                    class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">LIVE
+                    VIEW</a>
+                <a href="../html/trips.html"
+                    class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">TRIP
+                    HISTORY</a>
+            </div>
+
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center input-bg border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
+                    <div class="flex flex-col mr-4">
+                        <label class="text-[8px] font-black text-slate-500 uppercase">Tracking Target</label>
+                        <input type="text" id="device-id"
+                            class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-28"
+                            placeholder="Enter ID...">
+                    </div>
+                    <button id="set-btn"
+                        class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all active:scale-95">CONNECT</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow max-w-[1600px] mx-auto w-full">
+
+        <div class="lg:col-span-3 bg-white p-3 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+            <div id="map"></div>
+        </div>
+
+        <div class="space-y-6">
+
+            <div class="status-card">
+                <div class="status-header">
+                    <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Device Status</span>
+                    <span id="status-badge" class="status-badge badge-waiting">WAITING</span>
+                </div>
+                <div class="space-y-2">
+                    <div class="info-row"><span class="info-label">Target IMEI</span><span id="panel-imei"
+                            class="info-val">--</span></div>
+                    <div class="info-row"><span class="info-label">Last Ping</span><span id="panel-ping"
+                            class="info-val">--</span></div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                <h2
+                    class="font-black text-slate-800 text-sm uppercase tracking-widest border-b border-slate-50 pb-4 mb-4">
+                    Telemetry Data</h2>
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Ignition</p>
+                        <span id="ignition"
+                            class="inline-block px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-400 uppercase transition-all duration-300">N/A</span>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Current Speed</p>
+                        <p class="text-3xl font-black text-slate-900 tracking-tighter"><span id="speed">0</span><span
+                                class="text-xs font-medium text-slate-400 ml-1">km/h</span></p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Odometer</p>
+                        <p id="odo" class="text-sm font-bold text-slate-700 font-mono">0.00 km</p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Movement</p>
+                        <p id="movement" class="text-sm font-black text-blue-600 uppercase">--</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-5">
+                <h3 class="font-black text-slate-800 text-sm uppercase tracking-widest border-b border-slate-50 pb-4">
+                    Diagnostics</h3>
+                <div class="grid grid-cols-2 gap-y-5 gap-x-2">
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">GSM Signal</p>
+                        <div class="flex items-end space-x-0.5 h-4 mb-1" id="signal-bars">
+                            <div class="sig-bar h-[4px]"></div>
+                            <div class="sig-bar h-[7px]"></div>
+                            <div class="sig-bar h-[10px]"></div>
+                            <div class="sig-bar h-[13px]"></div>
+                            <div class="sig-bar h-[16px]"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Satellites</p>
+                        <p id="sats" class="text-lg font-bold text-slate-800">--</p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Battery</p>
+                        <div class="flex items-center space-x-2">
+                            <p id="battery" class="text-lg font-bold text-slate-800">--</p>
+                            <span id="battery-alert"
+                                class="hidden text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-black animate-pulse uppercase">Low</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Altitude</p>
+                        <p id="alt" class="text-lg font-bold text-slate-800">--</p>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-slate-50 space-y-2 text-[10px]">
+                    <div class="flex justify-between text-slate-500"><span>GNSS Status:</span> <span id="gnss-status"
+                            class="text-slate-800 font-bold text-right">--</span></div>
+                    <div class="flex justify-between text-slate-500"><span>Operator:</span> <span id="operator"
+                            class="text-slate-800 font-bold">--</span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer
+        class="bg-white border-t border-slate-200 p-4 px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-8">
+            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
+                class="h-6 opacity-80">
+            <span id="footer-msg" class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Ready</span>
+        </div>
+    </footer>
+
+</body>
+<script type="module" src="../js/live.js"></script>
+</html>
