@@ -8,7 +8,7 @@ Amplify.configure({
             endpoint: 'https://m677wqaywfat7ejuca7wmgwfeq.appsync-api.us-east-1.amazonaws.com/graphql',
             region: 'us-east-1',
             defaultAuthMode: 'apiKey',
-            apiKey: 'da2-6o2v64fnsvgivacrzto5nl3ouq'
+            apiKey: 'da2-kxrgczrfcfecrf6xjbw7tvcmri'
         }
     }
 });
@@ -46,7 +46,7 @@ if (deviceInput) deviceInput.value = deviceId;
 const statusBadge = document.getElementById('status-badge');
 const footerMsg = document.getElementById('footer-msg');
 
-window.logout =function() {
+window.logout = function () {
     localStorage.removeItem('idToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -245,9 +245,9 @@ function updateDashboard(data) {
     // 2. Status Panel Updates
     document.getElementById('panel-imei').innerText = data.imei;
     // const timeStr = data.timestamp ? new Date(parseInt(data.timestamp)).toLocaleString() : "--";
-    
+
     //change to custom format
-    document.getElementById('panel-ping').innerText = data.timestamp ? (()=>{const d=new Date(+data.timestamp),h=d.getHours()%12||12,m=d.getMinutes().toString().padStart(2,'0'),s=d.getSeconds().toString().padStart(2,'0'),ampm=d.getHours()>=12?'PM':'AM'; return `${d.getDate()}-${d.getMonth()+1}-${d.getFullYear()} ${h}:${m}:${s} ${ampm}`})() : "--";
+    document.getElementById('panel-ping').innerText = data.timestamp ? (() => { const d = new Date(+data.timestamp), h = d.getHours() % 12 || 12, m = d.getMinutes().toString().padStart(2, '0'), s = d.getSeconds().toString().padStart(2, '0'), ampm = d.getHours() >= 12 ? 'PM' : 'AM'; return `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()} ${h}:${m}:${s} ${ampm}` })() : "--";
 
     // Determine color class based on total strength
     // --- 3. GSM Signal Logic ---
