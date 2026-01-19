@@ -1,17 +1,43 @@
-import { Amplify } from 'https://esm.sh/aws-amplify';
-import { generateClient } from 'https://esm.sh/@aws-amplify/api';
+import { Amplify } from "https://esm.sh/aws-amplify@6";
+import { generateClient } from "https://esm.sh/aws-amplify@6/api";
 
-// --- CONFIGURATION ---
+import {
+  getCurrentUser,
+  signOut
+} from "https://esm.sh/aws-amplify@6/auth";
+
+import {CONFIG} from "./config.js"
+
 Amplify.configure({
-    API: {
-        GraphQL: {
-            endpoint: 'https://m677wqaywfat7ejuca7wmgwfeq.appsync-api.us-east-1.amazonaws.com/graphql',
-            region: 'us-east-1',
-            defaultAuthMode: 'apiKey',
-            apiKey: 'da2-kxrgczrfcfecrf6xjbw7tvcmri'
-        }
+  Auth: {
+    Cognito: {
+      userPoolId: CONFIG.cognito.userPoolId,
+      userPoolClientId: CONFIG.cognito.clientId,
+      region: 'us-east-1'
     }
+  },
+  API: {
+    GraphQL: {
+      endpoint: 'https://m677wqaywfat7ejuca7wmgwfeq.appsync-api.us-east-1.amazonaws.com/graphql',
+      region: 'us-east-1',
+      defaultAuthMode: 'userPool'
+    }
+  }
 });
+
+
+//check auth state 
+await (async function authGuard() {
+  try {
+    await getCurrentUser();
+    console.log("User authenticated");
+  } catch {
+    console.warn("User not authenticated, redirecting...");
+    window.location.href = "../html/loginPage.html";
+  }
+})();
+
+
 
 const client = generateClient();
 const EGYPT_COORDS = [26.8206, 30.8025];
@@ -46,12 +72,11 @@ if (deviceInput) deviceInput.value = deviceId;
 const statusBadge = document.getElementById('status-badge');
 const footerMsg = document.getElementById('footer-msg');
 
-window.logout = function () {
-    localStorage.removeItem('idToken');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+window.logout = async function () {
+    await signOut();
     window.location.href = "../html/loginPage.html";
 }
+
 
 // --- INIT ---
 const storedImei = deviceId || localStorage.getItem('lastImei') || "";
