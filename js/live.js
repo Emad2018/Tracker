@@ -1,40 +1,17 @@
-import { Amplify } from "https://esm.sh/aws-amplify@6";
+
 import { generateClient } from "https://esm.sh/aws-amplify@6/api";
-
-import {
-  getCurrentUser,
-  signOut
-} from "https://esm.sh/aws-amplify@6/auth";
-
-import {CONFIG} from "./config.js"
-
-Amplify.configure({
-  Auth: {
-    Cognito: {
-      userPoolId: CONFIG.cognito.userPoolId,
-      userPoolClientId: CONFIG.cognito.clientId,
-      region: 'us-east-1'
-    }
-  },
-  API: {
-    GraphQL: {
-      endpoint: 'https://m677wqaywfat7ejuca7wmgwfeq.appsync-api.us-east-1.amazonaws.com/graphql',
-      region: 'us-east-1',
-      defaultAuthMode: 'userPool'
-    }
-  }
-});
-
+import { Amplifyconfig } from "./config.js"
+import { getCurrentUser, signOut } from "https://esm.sh/aws-amplify@6/auth";
 
 //check auth state 
 await (async function authGuard() {
-  try {
-    await getCurrentUser();
-    console.log("User authenticated");
-  } catch {
-    console.warn("User not authenticated, redirecting...");
-    window.location.href = "../html/loginPage.html";
-  }
+    try {
+        await getCurrentUser();
+        console.log("User authenticated");
+    } catch {
+        console.warn("User not authenticated, redirecting...");
+        window.location.href = "../html/loginPage.html";
+    }
 })();
 
 
