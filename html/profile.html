@@ -1,34 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>User Profile | TW FleetMarschall</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-body { background:#f8fafc }
-</style>
 
-<script>
-if (!localStorage.getItem("idToken")) {
-    window.location.href = "../html/loginPage.html";
-}
-</script>
+<head>
+    <meta charset="UTF-8">
+    <title>User Profile | TW FleetMarschall</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #f8fafc
+        }
+    </style>
+
+    <script>
+        if (!localStorage.getItem("idToken")) {
+            window.location.href = "../html/loginPage.html";
+        }
+    </script>
 </head>
 
 <body class="min-h-screen flex flex-col text-slate-900">
 
-<!-- NAV -->
-<nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
-    <a href="../html/live.html">
-        <div class="flex items-center space-x-4">
-            <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" class="h-10">
-            <div>
-                <span class="font-black text-lg tracking-tight">TW 
-                    <span class="text-pink-400">FleetMarschall</span></span>
-                <p class="text-[9px] text-slate-400 uppercase font-bold tracking-[0.2em]">Real-Time Intelligence</p>
+    <!-- NAV -->
+    <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
+        <a href="../html/live.html">
+            <div class="flex items-center space-x-4">
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" class="h-10">
+                <div>
+                    <span class="font-black text-lg tracking-tight">TW
+                        <span class="text-pink-400">FleetMarschall</span></span>
+                    <p class="text-[9px] text-slate-400 uppercase font-bold tracking-[0.2em]">Real-Time Intelligence</p>
+                </div>
             </div>
-        </div>
-    </a>
+        </a>
 
         <div class="flex items-center space-x-6">
             <div class="flex">
@@ -38,8 +41,8 @@ if (!localStorage.getItem("idToken")) {
             <div class="flex">
                 <a href="#"
                     class="bg-blue-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">
-                PROFILE</a>    
-            </div>            
+                    PROFILE</a>
+            </div>
             <div class="flex bg-[#1a253d] rounded-xl p-1 shadow-inner">
                 <a href="../html/live.html"
                     class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">LIVE
@@ -49,139 +52,177 @@ if (!localStorage.getItem("idToken")) {
                     HISTORY</a>
             </div>
         </div>
-</nav>
+    </nav>
 
-<!-- CONTENT -->
-<main class="p-6 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+    <!-- CONTENT -->
+    <main class="p-6 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
 
-    <!-- PROFILE CARD -->
-    <div class="lg:col-span-2 bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
-        <div class="flex items-center space-x-6">
-            <div class="h-24 w-24 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center shadow-inner">
-                <span class="text-4xl font-black text-blue-600" id="avatar-letter">U</span>
-            </div>
+        <!-- PROFILE CARD -->
+        <div class="lg:col-span-2 bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
+            <div class="flex items-center space-x-6">
+                <div
+                    class="h-24 w-24 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center shadow-inner">
+                    <span class="text-4xl font-black text-blue-600" id="avatar-letter">U</span>
+                </div>
 
-            <div>
-                <h1 id="username" class="text-3xl font-black tracking-tight">User Name</h1>
-                <p class="text-[10px] uppercase font-black tracking-wider text-slate-400 mt-1">
-                    Registered User
-                </p>
+                <div>
+                    <h1 id="username" class="text-3xl font-black tracking-tight">User Name</h1>
+                    <p class="text-[10px] uppercase font-black tracking-wider text-slate-400 mt-1">
+                        Registered User
+                    </p>
 
-                <div class="flex space-x-3 mt-3">
-                    <span class="bg-blue-100 text-blue-700 text-[9px] px-3 py-1 rounded-full font-black uppercase" id="role-badge">
-                        USER
-                    </span>
-                    <span class="bg-green-100 text-green-700 text-[9px] px-3 py-1 rounded-full font-black uppercase">
-                        ACTIVE
-                    </span>
+                    <div class="flex space-x-3 mt-3">
+                        <span class="bg-blue-100 text-blue-700 text-[9px] px-3 py-1 rounded-full font-black uppercase"
+                            id="role-badge">
+                            USER
+                        </span>
+                        <span
+                            class="bg-green-100 text-green-700 text-[9px] px-3 py-1 rounded-full font-black uppercase">
+                            ACTIVE
+                        </span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-6 mt-8">
-            <div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Email</p>
-                <p id="email" class="font-black text-slate-800">user@email.com</p>
-            </div>
+            <div class="grid grid-cols-2 gap-6 mt-8">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Email</p>
+                    <p id="email" class="font-black text-slate-800">user@email.com</p>
+                </div>
 
-            <!-- <div>
+                <!-- <div>
                 <p class="text-[10px] font-bold text-slate-400 uppercase">User ID</p>
                 <p id="user-id" class="font-mono font-black text-blue-600">--</p>
             </div> -->
 
-            <div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Created</p>
-                <p id="created" class="font-black text-slate-800">--</p>
-            </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Created</p>
+                    <p id="created" class="font-black text-slate-800">--</p>
+                </div>
 
-            <div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Last Login</p>
-                <p id="last-login" class="font-black text-slate-800">--</p>
-            </div>
-        </div>
-
-        <!-- DEVICE LIST -->
-        <div class="mt-6 bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
-            <div class="flex justify-between items-center">
-                <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
-                    Registered Devices
-                </h2>
-
-                <!-- EDIT BUTTON -->
-                <button id="editToggle"
-                    class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black px-4 py-2 rounded-lg shadow-lg transition">
-                    EDIT
-                </button>
-            </div>
-
-            <!-- Add Device Panel (Hidden) -->
-            <div id="add-panel" class="hidden mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <h3 class="text-[10px] font-black uppercase text-slate-500 mb-2">Add New Device</h3>
-
-                <div class="flex space-x-3">
-                    <input id="newDeviceId"
-                        class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono w-full outline-none focus:ring focus:ring-blue-200"
-                        placeholder="Enter Device ID">
-
-                    <button onclick="addDevice()"
-                        class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition">
-                        ADD
-                    </button>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Last Login</p>
+                    <p id="last-login" class="font-black text-slate-800">--</p>
                 </div>
             </div>
 
-            <!-- Header Row -->
-            <div class="grid grid-cols-4 text-[9px] font-black uppercase text-slate-400 mb-2 px-2">
-                <span>Device ID</span>
-                <span>Status</span>
-                <span>Last Update</span>
-                <span class="text-right">Actions</span>
+            <!-- DEVICE LIST -->
+            <div class="mt-6 bg-white rounded-[2rem] p-8 shadow-xl border border-slate-100">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
+                        Registered Devices
+                    </h2>
+
+                    <!-- EDIT BUTTON -->
+                    <button id="editToggle"
+                        class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black px-4 py-2 rounded-lg shadow-lg transition">
+                        EDIT
+                    </button>
+                </div>
+
+                <!-- Add Device Panel (Hidden) -->
+                <div id="add-panel" class="hidden mb-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <h3 class="text-[10px] font-black uppercase text-slate-500 mb-2">Add New Device</h3>
+
+                    <div class="flex space-x-3">
+                        <input id="newDeviceId"
+                            class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono w-full outline-none focus:ring focus:ring-blue-200"
+                            placeholder="Enter Device ID">
+
+                        <button onclick="addDevice()"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition">
+                            ADD
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Header Row -->
+                <div class="grid grid-cols-4 text-[9px] font-black uppercase text-slate-400 mb-2 px-2">
+                    <span>Device ID</span>
+                    <span>Status</span>
+                    <span>Last Update</span>
+                    <span class="text-right">Actions</span>
+                </div>
+
+                <div id="device-list" class="space-y-3"></div>
+
+                <p id="no-devices" class="hidden text-center text-[11px] text-slate-500 mt-4">
+                    No devices linked to this account.
+                </p>
+            </div>
+            <div id="admin-panel"
+                class="hidden mt-6 bg-slate-50 border border-slate-200 rounded-[2rem] p-8 shadow-inner">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-800">
+                        Admin: Create New User
+                    </h2>
+                    <span class="bg-indigo-600 text-white text-[9px] font-black px-2 py-1 rounded">SUPER ONLY</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">User Email</label>
+                        <input id="newUserEmail" type="email"
+                            class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="newuser@example.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assign Role</label>
+                        <select id="newUserRole"
+                            class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                            <option value="super">Super</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mt-4">
+                    <p id="creation-status" class="text-[11px] font-bold"></p>
+                    <button onclick="createNewUser()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black px-6 py-2 rounded-lg shadow-lg transition">
+                        CREATE USER
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDE PANEL -->
+        <div class="space-y-6">
+
+            <!-- Permissions-->
+            <div class="bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100">
+                <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
+                    Access Permissions</h2>
+
+                <ul class="space-y-2 text-[11px] font-black text-slate-700">
+                    <li class="flex justify-between">
+                        <span>Live Tracking</span>
+                        <span class="text-blue-600">ENABLED</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Trip History</span>
+                        <span class="text-blue-600">ENABLED</span>
+                    </li>
+                    <li class="flex justify-between">
+                        <span>Admin Panel</span>
+                        <span class="text-red-500">RESTRICTED</span>
+                    </li>
+                </ul>
             </div>
 
-            <div id="device-list" class="space-y-3"></div>
+            <!-- System  -->
+            <div class="bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100">
+                <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
+                    System Status</h2>
 
-            <p id="no-devices" class="hidden text-center text-[11px] text-slate-500 mt-4">
-                No devices linked to this account.
-            </p>
+                <p class="text-[11px] text-slate-500">
+                    All systems linked to this account are functioning normally.
+                </p>
+            </div>
         </div>
-
-    </div>
-
-    <!-- SIDE PANEL -->
-    <div class="space-y-6">
-
-        <!-- Permissions-->
-        <div class="bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100">
-            <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
-                Access Permissions</h2>
-
-            <ul class="space-y-2 text-[11px] font-black text-slate-700">
-                <li class="flex justify-between">
-                    <span>Live Tracking</span>
-                    <span class="text-blue-600">ENABLED</span>
-                </li>
-                <li class="flex justify-between">
-                    <span>Trip History</span>
-                    <span class="text-blue-600">ENABLED</span>
-                </li>
-                <li class="flex justify-between">
-                    <span>Admin Panel</span>
-                    <span class="text-red-500">RESTRICTED</span>
-                </li>
-            </ul>
-        </div> 
-
-        <!-- System  -->
-        <div class="bg-white rounded-[2rem] p-6 shadow-xl border border-slate-100">
-            <h2 class="text-sm font-black uppercase tracking-widest border-b pb-4 mb-4 text-slate-800">
-                System Status</h2>
-
-            <p class="text-[11px] text-slate-500">
-                All systems linked to this account are functioning normally.
-            </p>
-        </div>
-    </div>
-</main>
+    </main>
 
 
     <footer
@@ -192,6 +233,7 @@ if (!localStorage.getItem("idToken")) {
         </div>
     </footer>
 
-<script src="../js/profile.js"></script>
+    <script src="../js/profile.js"></script>
 </body>
+
 </html>

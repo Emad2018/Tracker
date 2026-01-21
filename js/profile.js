@@ -3,14 +3,16 @@ const API_BASE = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/Dev";
 document.addEventListener("DOMContentLoaded", () => {
   loadProfile();
   loadDevices();
-    const editBtn = document.getElementById("editToggle");
-     const addPanel = document.getElementById("add-panel");
 
+  const editBtn = document.getElementById("editToggle");
+  const addPanel = document.getElementById("add-panel");
 
+  if (editBtn) {
     editBtn.addEventListener("click", () => {
-    addPanel.classList.toggle("hidden");
-    editBtn.innerText = isHidden ? "EDIT" : "CANCEL";
-  });
+      const isHidden = addPanel.classList.toggle("hidden");
+      editBtn.innerText = isHidden ? "EDIT" : "CANCEL";
+    });
+  }
 });
 
 /**
@@ -34,11 +36,11 @@ function formatDateTime(dateInput) {
 }
 
 
-window.logout =function() {
-    localStorage.removeItem('idToken');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    window.location.href = "../html/loginPage.html";
+window.logout = function () {
+  localStorage.removeItem('idToken');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  window.location.href = "../html/loginPage.html";
 }
 
 function checkDeviceActive(data) {
@@ -57,23 +59,32 @@ function checkDeviceActive(data) {
 }
 
 async function loadProfile() {
-  const res = await fetch(`${API_BASE}/profile`, {
-    headers: { "Authorization": "Bearer " + localStorage.getItem("idToken") }
-  });
-  const profile = await res.json();
-  console.log("this is profile",profile);
-    const email = profile.email || "No email";
-    const username = email.split("@")[0];
+  const token = localStorage.getItem("idToken");
+  if (!token) return (window.location.href = "../html/loginPage.html");
 
-  document.getElementById("username").innerText = username;
-  document.getElementById("email").innerText = profile.email || "No email";
-  const avatarLetterEl = document.getElementById("avatar-letter");
-    if (avatarLetterEl) {
-      avatarLetterEl.innerText = username.charAt(0).toUpperCase();
+  try {
+    const res = await fetch(`${API_BASE}/profile`, {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const profile = await res.json();
+
+    // Basic Info
+    document.getElementById("username").innerText = profile.email.split("@")[0];
+    document.getElementById("email").innerText = profile.email;
+
+    // Group/Admin Panel Check
+    const decoded = parseJwt(token);
+    const groups = decoded?.["cognito:groups"] || [];
+
+    if (document.getElementById("role-badge") && groups.length > 0) {
+      document.getElementById("role-badge").innerText = groups[0].toUpperCase();
     }
-  // document.getElementById("user-id").innerText = profile.userId;
-  document.getElementById("created").innerText =formatDateTime(profile.createdAt);
 
+    if (groups.includes("Super")) {
+      const adminPanel = document.getElementById("admin-panel");
+      if (adminPanel) adminPanel.classList.remove("hidden");
+    }
+  } catch (err) { console.error(err); }
 }
 
 
@@ -82,8 +93,8 @@ async function loadDevices() {
     headers: { "Authorization": "Bearer " + localStorage.getItem("idToken") }
   });
   const devices = await res.json();
-  console.log("this is devices",devices);
-  
+  console.log("this is devices", devices);
+
 
   const list = document.getElementById("device-list");
   const emptyMsg = document.getElementById("no-devices");
@@ -97,7 +108,7 @@ async function loadDevices() {
 
   emptyMsg.classList.add("hidden");
 
-    devices.forEach(device => {
+  devices.forEach(device => {
     const status = checkDeviceActive(device); // calculate real status
 
     const row = document.createElement("div");
@@ -136,7 +147,7 @@ async function loadDevices() {
 
 
     list.appendChild(row);
-    });
+  });
 
 }
 
@@ -199,4 +210,53 @@ async function deleteDevice(deviceId) {
     console.error(err);
     alert("Failed to delete device: " + err.message);
   }
+}
+async function createNewUser() {
+  const emailInput = document.getElementById("newUserEmail");
+  const roleInput = document.getElementById("newUserRole");
+  const statusMsg = document.getElementById("creation-status");
+  const btn = document.querySelector("#admin-panel button");
+
+  const email = emailInput.value.trim();
+  const role = roleInput.value;
+
+  if (!email) return alert("Email is required");
+
+  btn.disabled = true;
+  btn.innerText = "CREATING...";
+  statusMsg.innerText = "";
+
+  try {
+    const response = await fetch(`${API_BASE}/users`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + localStorage.getItem("idToken"),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, role })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      statusMsg.className = "text-[11px] font-bold text-emerald-600";
+      statusMsg.innerText = data.message;
+      emailInput.value = "";
+    } else {
+      throw new Error(data.message || "Failed to create user");
+    }
+  } catch (error) {
+    statusMsg.className = "text-[11px] font-bold text-red-600";
+    statusMsg.innerText = "ERROR: " + error.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "CREATE USER";
+  }
+}
+function parseJwt(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(window.atob(base64));
+  } catch (e) { return null; }
 }
