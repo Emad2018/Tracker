@@ -28,11 +28,11 @@ def process_trips():
 
     # Ensure timestamp is datetime and sort
     df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df = df.sort_values(by=['DeviceId', 'timestamp'])
+    df = df.sort_values(by=['IMEI', 'timestamp'])
     
     all_trips = {}
 
-    for device_id, group in df.groupby('DeviceId'):
+    for device_id, group in df.groupby('IMEI'):
         group = group.sort_values('timestamp')
         
         # 2. Identify Active Records (Ignition or Movement)

@@ -4,7 +4,7 @@ import tkintermapview
 import json
 import threading
 import time
-from datetime import datetime
+from datetime import datetime,timezone
 from awscrt import mqtt5
 from awsiot import mqtt5_client_builder
 
@@ -174,8 +174,10 @@ class TripViewer:
                     time.sleep(min(delay, 2)) # Cap delay for demo
                 
                 payload = record.copy()
-                payload['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                
+                now_utc = datetime.now(timezone.utc) 
+                # Get the timestamp in seconds (float), multiply by 1000, and convert to integer
+                payload['timestamp']  = int(now_utc.timestamp() * 1000)
+                payload['IMEI']  = str(payload['IMEI'])
                 # 3. Publish and Check Result
                 publish_future = mqtt_conn.publish(mqtt5.PublishPacket(
                     topic=TOPIC,
