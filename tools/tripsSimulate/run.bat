@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 :: --- CONFIGURATION ---
 set ENV_NAME=tracker_sim
 set DATA_FILE=data/trips.json
-set PROCESS_SCRIPT=data/tprocess_data.py
-set GUI_SCRIPT=gui_main.py
+set PROCESS_SCRIPT=scripts/process_data.py
+set GUI_SCRIPT=scripts/gui_main.py
 
 echo [1/4] Checking Anaconda installation...
 where conda >nul 2>nul

@@ -3,8 +3,8 @@ import json
 from datetime import timedelta
 
 # Configuration
-INPUT_FILE = 'Carloggs.csv'
-OUTPUT_FILE = 'trips.json'
+INPUT_FILE =  'data/Carloggs.csv'
+OUTPUT_FILE = 'data/trips.json'
 
 # Filter Thresholds
 MIN_DURATION_SECONDS = 120  # 2 minutes
@@ -71,11 +71,11 @@ def process_trips():
             # Prepare for JSON
             records = trip_data.drop(columns=['is_active', 'prev_time', 'time_diff', 'new_trip', 'trip_id']).to_dict(orient='records')
             for record in records:
-                record['timestamp'] = record['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                record['timestamp'] = record['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
             
             device_valid_trips.append(records)
             
-        all_trips[str(device_id)] = device_valid_trips
+        all_trips = device_valid_trips
         print(f"Device {device_id}: Generated {len(device_valid_trips)} valid trips.")
 
     with open(OUTPUT_FILE, 'w') as f:
