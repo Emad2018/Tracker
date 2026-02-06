@@ -1,139 +1,73 @@
+# gui_main.py
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox, scrolledtext
 import tkintermapview
-import json
-import threading
-import time
 import os
-import copy
-from PIL import Image, ImageTk, ImageOps, ImageDraw
-from datetime import datetime, timezone
-from math import radians, cos, sin, asin, sqrt
-from awscrt import mqtt5
-from awsiot import mqtt5_client_builder
+import threading
+from PIL import Image, ImageTk, ImageDraw
+import time
+# Custom Modules
+import config
+import utils
+from simulator import DeviceSimulator
+from api_client import APIClient
 
-# --- AWS Configuration ---
-ENDPOINT = "a2ocgpntw8531n-ats.iot.us-east-1.amazonaws.com"
-CERT_PATH = "certificate/89217285ce46f0edac3380d8421a9f1edf1e5f90c68ed0e5679b609fa036a707-certificate.pem.crt"
-KEY_PATH = "certificate/89217285ce46f0edac3380d8421a9f1edf1e5f90c68ed0e5679b609fa036a707-private.pem.key"
-ROOT_CA_PATH = "certificate/AmazonRootCA1.pem"
-TOPIC_PREFIX = "FMC150/Sim"
-
-# --- Helper Functions ---
-def haversine(lon1, lat1, lon2, lat2):
-    R = 6371000 
-    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
-    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
-    return R * (2 * asin(sqrt(a)))
-
-def calculate_trip_stats(trip):
-    if not trip or len(trip) < 2:
-        return {"dist": "0 km", "dur": "0s", "max_s": "0 km/h", "avg_s": "0 km/h"}
-    total_dist = 0
-    max_speed = 0
-    speed_sum = 0
-    try:
-        start_time = datetime.strptime(trip[0]['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
-        end_time = datetime.strptime(trip[-1]['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
-        duration = end_time - start_time
-    except:
-        duration = "N/A"
-    for i in range(len(trip)):
-        p = trip[i]
-        s = p.get('speed_gnss', 0)
-        max_speed = max(max_speed, s)
-        speed_sum += s
-        if i > 0:
-            total_dist += haversine(trip[i-1]['longitude'], trip[i-1]['latitude'], p['longitude'], p['latitude'])
-    dist=total_dist/1000
-    avg_s=dist/(duration.total_seconds()/3600) if  duration.total_seconds() > 0 else 0
-    return {
-        "dist": f"{dist:.2f} km", "dur": str(duration),
-        "max_s": f"{max_speed} km/h", "avg_s": f"{avg_s:.1f} km/h"
-    }
-
-# --- Simulator Class ---
-class DeviceSimulator:
-    def __init__(self, imei, trip_data, update_cb=None):
-        self.imei = imei
-        self.trip = trip_data
-        self.update_cb = update_cb
-        self.client = None
-        self.paused = False
-        self.stopped = False
-
-    def start(self):
-        self.stopped = False
-        threading.Thread(target=self._run, daemon=True).start()
-
-    def pause(self):
-        self.update_cb("Paused", 0, None) 
-        self.paused = True
-    def resume(self): self.paused = False
-
-    def stop(self):
-        self.stopped = True
-        if self.client:
-            try: self.client.stop()
-            except: pass
-
-    def _run(self):
-        try:
-            self.client = mqtt5_client_builder.mtls_from_path(
-                endpoint=ENDPOINT, cert_filepath=CERT_PATH, pri_key_filepath=KEY_PATH,
-                ca_filepath=ROOT_CA_PATH, client_id=f"Sim_{self.imei}_{int(time.time())}"
-            )
-            self.client.start()
-        except Exception:
-            if self.update_cb: self.update_cb("Error: Connection Failed", 0, None)
-            return
-
-        total = len(self.trip)
-        for i, point in enumerate(self.trip):
-            if self.stopped: break
-            
-            while self.paused:
-                if self.stopped: break
-                time.sleep(0.2)
-
-            # Send current real-time timestamp to AWS
-            payload = copy.deepcopy(point)
-            payload['IMEI'] = self.imei
-            payload['timestamp'] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            
-            try:
-                self.client.publish(mqtt5.PublishPacket(
-                    topic=f"{TOPIC_PREFIX}/{self.imei}", 
-                    payload=json.dumps(payload), qos=mqtt5.QoS.AT_LEAST_ONCE
-                ))
-            except: pass
-
-            if self.update_cb:
-                self.update_cb("Running", (i+1)/total * 100, point)
-
-            # Timing logic: Wait based on difference in original timestamps
-            if i < total - 1:
-                try:
-                    t1 = datetime.strptime(point['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
-                    t2 = datetime.strptime(self.trip[i+1]['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
-                    wait_seconds = (t2 - t1).total_seconds()
-                    
-                    # Responsive sleep loop (checks for stop every 100ms)
-                    start_wait = time.time()
-                    while time.time() - start_wait < max(0.1, wait_seconds):
-                        if self.stopped: break
-                        time.sleep(0.1)
-                except:
-                    time.sleep(1.0)
-
-        if self.client: self.client.stop()
-        final_status = "Complete" if not self.stopped else "Stopped"
-        if self.update_cb: self.update_cb(final_status, 100 if final_status == "Complete" else None, None)
-
-# --- Main GUI Application ---
-class IotSimulatorApp:
-    def __init__(self, root):
+class LoginWindow:
+    def __init__(self, root, on_success):
         self.root = root
+        self.on_success = on_success
+        self.root.title("FleetM Simulator Login")
+        self.root.geometry("400x350")
+        self.api = APIClient()
+
+        frame = ttk.Frame(root, padding=20)
+        frame.pack(expand=True, fill=tk.BOTH)
+
+        ttk.Label(frame, text="Welcome Back", font=("Helvetica", 16, "bold")).pack(pady=10)
+        
+        ttk.Label(frame, text="Email:").pack(anchor='w')
+        self.ent_email = ttk.Entry(frame, width=40)
+        self.ent_email.pack(pady=5)
+        self.ent_email.insert(0, config.DEFAULT_EMAIL)
+
+        ttk.Label(frame, text="Password:").pack(anchor='w')
+        self.ent_pass = ttk.Entry(frame, show="*", width=40)
+        self.ent_pass.pack(pady=5)
+        self.ent_pass.insert(0, config.DEFAULT_PASS)
+
+        self.btn_login = ttk.Button(frame, text="Login", command=self.do_login)
+        self.btn_login.pack(pady=20, fill=tk.X)
+        
+        self.lbl_status = ttk.Label(frame, text="", foreground="red")
+        self.lbl_status.pack()
+
+    def do_login(self):
+        self.btn_login.config(state="disabled")
+        self.lbl_status.config(text="Authenticating...", foreground="blue")
+        
+        email = self.ent_email.get()
+        password = self.ent_pass.get()
+        
+        # Run in thread to not freeze GUI
+        threading.Thread(target=self._login_thread, args=(email, password), daemon=True).start()
+
+    def _login_thread(self, email, password):
+        success, msg = self.api.login(email, password)
+        self.root.after(0, lambda: self._login_result(success, msg))
+
+    def _login_result(self, success, msg):
+        self.btn_login.config(state="normal")
+        if success:
+            self.lbl_status.config(text="Success!", foreground="green")
+            self.root.destroy()
+            self.on_success(self.api) # Callback with authenticated API client
+        else:
+            self.lbl_status.config(text=msg, foreground="red")
+
+class IotSimulatorApp:
+    def __init__(self, root, api_client):
+        self.root = root
+        self.api_client = api_client
         self.root.title("IoT Simulation Control Center")
         self.root.geometry("1400x850")
         
@@ -144,41 +78,36 @@ class IotSimulatorApp:
 
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill=tk.BOTH, expand=True)
-        self.tab_device, self.tab_list = ttk.Frame(self.notebook), ttk.Frame(self.notebook)
+        
+        self.tab_device = ttk.Frame(self.notebook)
+        self.tab_list = ttk.Frame(self.notebook)
+        self.tab_factory = ttk.Frame(self.notebook)
+        
         self.notebook.add(self.tab_device, text="  Device Map View  ")
         self.notebook.add(self.tab_list, text="  Multi-Device List  ")
+        self.notebook.add(self.tab_factory, text="  Vehicle Factory  ")
         
         self.setup_device_tab()
         self.setup_list_tab()
+        self.setup_factory_tab()
 
     def load_data(self):
-        # Path safety check
-        t_path = 'data/trips.json' if os.path.exists('data/trips.json') else 'trips.json'
-        try:
-            with open(t_path, 'r') as f: self.trips = [t for t in json.load(f) if t]
-        except: self.trips = []
-
-        d_path = 'data/devices.txt' if os.path.exists('data/devices.txt') else 'devices.txt'
-        if os.path.exists(d_path):
-            with open(d_path, 'r') as f: self.devices = [l.strip() for l in f if l.strip()]
-        else: self.devices = ["Sim_Device_1", "Sim_Device_2"]
-        
+        self.trips = utils.load_trips_data()
+        self.devices = utils.load_devices_data()
         self.trip_names = [f"Route {i+1} ({len(t)} pts)" for i, t in enumerate(self.trips)]
 
     def load_icons(self):
         self.car_icon = None
-        icon_path = os.path.join("data", "car.png")
-        if os.path.exists(icon_path):
+        if os.path.exists(config.ICON_PATH):
             try:
-                # Create round, transparent Uber-style icon
-                img = Image.open(icon_path).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
+                img = Image.open(config.ICON_PATH).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
                 mask = Image.new('L', (40, 40), 0)
                 ImageDraw.Draw(mask).ellipse((0, 0, 40, 40), fill=255)
                 img.putalpha(mask)
                 self.car_icon = ImageTk.PhotoImage(img)
-            except Exception as e:
-                print(f"Icon error: {e}")
+            except Exception as e: print(f"Icon error: {e}")
 
+    # --- Tab 1 & 2 (Existing functionality, kept clean) ---
     def setup_device_tab(self):
         paned = ttk.PanedWindow(self.tab_device, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
@@ -186,8 +115,10 @@ class IotSimulatorApp:
 
         ttk.Label(sidebar, text="Device Selection:", font=("Arial", 10, "bold")).pack(anchor='w')
         self.var_dv_imei = tk.StringVar(value=self.devices[0] if self.devices else "")
-        ttk.Combobox(sidebar, textvariable=self.var_dv_imei, values=self.devices, state="readonly").pack(fill=tk.X, pady=(5, 15))
+        self.cb_devices = ttk.Combobox(sidebar, textvariable=self.var_dv_imei, values=self.devices, state="readonly")
+        self.cb_devices.pack(fill=tk.X, pady=(5, 15))
 
+        # (Rest of Tab 1 setup similar to original...)
         ttk.Label(sidebar, text="Route Controls:", font=("Arial", 10, "bold")).pack(anchor='w')
         nav = ttk.Frame(sidebar); nav.pack(fill=tk.X, pady=5)
         ttk.Button(nav, text="< Prev", command=lambda: self.nav_trip(-1)).pack(side=tk.LEFT, expand=True)
@@ -211,28 +142,22 @@ class IotSimulatorApp:
         self.lbl_dv_status = ttk.Label(sidebar, text="Status: Ready", font=("Arial", 9))
         self.lbl_dv_status.pack()
 
-        # Google Map Style Integration
         self.map_widget = tkintermapview.TkinterMapView(paned, width=900, height=700)
         self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}", max_zoom=22)
         paned.add(self.map_widget, weight=1)
-        
-        self.live_marker = None
-        self.current_trip_idx = 0
-        self.update_map_display()
+        self.live_marker = None; self.current_trip_idx = 0; self.update_map_display()
 
+    # (Logic Methods for Tab 1)
     def update_map_display(self):
         self.map_widget.delete_all_path(); self.map_widget.delete_all_marker(); self.live_marker = None
         if not self.trips: return
         trip = self.trips[self.current_trip_idx]
         self.lbl_route_name.config(text=f"Route {self.current_trip_idx + 1}")
-        
-        stats = calculate_trip_stats(trip)
+        stats = utils.calculate_trip_stats(trip)
         self.stats_box.config(text=f"Dist: {stats['dist']}\nDur:  {stats['dur']}\nMax:  {stats['max_s']}\nAvg:  {stats['avg_s']}")
-        
         pts = [(p['latitude'], p['longitude']) for p in trip]
         if pts:
             self.map_widget.set_path(pts, color="#3498db", width=3)
-            # Start/Stop Markers
             self.map_widget.set_marker(pts[0][0], pts[0][1], text="START", marker_color_outside="green")
             self.map_widget.set_marker(pts[-1][0], pts[-1][1], text="END", marker_color_outside="red")
             self.map_widget.set_position(pts[0][0], pts[0][1]); self.map_widget.set_zoom(14)
@@ -245,26 +170,18 @@ class IotSimulatorApp:
         imei = self.var_dv_imei.get()
         self.active_dv_imei = imei
         if imei in self.simulators: self.simulators[imei].stop()
-        
         sim = DeviceSimulator(imei, self.trips[self.current_trip_idx], self.dv_update_ui)
-        self.simulators[imei] = sim
-        sim.start()
-
-        self.btn_dv_start.config(state="disabled")
-        self.btn_dv_pause.config(state="normal", text="⏸ Pause")
-        self.btn_dv_stop.config(state="normal")
+        self.simulators[imei] = sim; sim.start()
+        self.btn_dv_start.config(state="disabled"); self.btn_dv_pause.config(state="normal", text="⏸ Pause"); self.btn_dv_stop.config(state="normal")
 
     def dv_stop(self):
-        if self.active_dv_imei in self.simulators:
-            self.simulators[self.active_dv_imei].stop()
+        if self.active_dv_imei in self.simulators: self.simulators[self.active_dv_imei].stop()
 
     def dv_pause(self):
         sim = self.simulators.get(self.active_dv_imei)
         if sim:
-            if sim.paused: 
-                sim.resume(); self.btn_dv_pause.config(text="⏸ Pause")
-            else: 
-                sim.pause(); self.btn_dv_pause.config(text="▶ Resume")
+            if sim.paused: sim.resume(); self.btn_dv_pause.config(text="⏸ Pause")
+            else: sim.pause(); self.btn_dv_pause.config(text="▶ Resume")
 
     def dv_update_ui(self, status, progress, record):
         self.root.after(0, lambda: self._dv_ui_callback(status, progress, record))
@@ -272,26 +189,25 @@ class IotSimulatorApp:
     def _dv_ui_callback(self, status, progress, record):
         self.lbl_dv_status.config(text=f"Status: {status}")
         if progress is not None: self.pb_dv['value'] = progress
-        
         if status in ["Complete", "Stopped", "Error: Connection Failed"]:
-            self.btn_dv_start.config(state="normal")
-            self.btn_dv_pause.config(state="disabled")
-            self.btn_dv_stop.config(state="disabled")
-        
+            self.btn_dv_start.config(state="normal"); self.btn_dv_pause.config(state="disabled"); self.btn_dv_stop.config(state="disabled")
         if record:
             lat, lon = record['latitude'], record['longitude']
             if self.live_marker: self.live_marker.set_position(lat, lon)
             else: self.live_marker = self.map_widget.set_marker(lat, lon, text="Live", icon=self.car_icon)
 
+    # --- Tab 2: List ---
     def setup_list_tab(self):
         container = ttk.Frame(self.tab_list)
         container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
         canvas = tk.Canvas(container); scroll = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         self.list_frame = ttk.Frame(canvas); self.list_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.create_window((0, 0), window=self.list_frame, anchor="nw"); canvas.configure(yscrollcommand=scroll.set)
         canvas.pack(side="left", fill="both", expand=True); scroll.pack(side="right", fill="y")
-        
+        self.refresh_list_tab()
+
+    def refresh_list_tab(self):
+        for widget in self.list_frame.winfo_children(): widget.destroy()
         cols = ["Device IMEI", "Select Route", "Simulation Controls", "Status", "Progress"]
         for c, text in enumerate(cols): ttk.Label(self.list_frame, text=text, font=("Arial", 9, "bold")).grid(row=0, column=c, padx=15, pady=10)
         
@@ -299,7 +215,6 @@ class IotSimulatorApp:
         for i, imei in enumerate(self.devices):
             row = i + 1
             ttk.Label(self.list_frame, text=imei).grid(row=row, column=0, padx=15)
-            
             v_route = tk.StringVar(); cb = ttk.Combobox(self.list_frame, textvariable=v_route, values=self.trip_names, state="readonly", width=15)
             if self.trip_names: cb.current(0)
             cb.grid(row=row, column=1, padx=15)
@@ -312,7 +227,6 @@ class IotSimulatorApp:
             
             lbl_s = ttk.Label(self.list_frame, text="Idle", width=12); lbl_s.grid(row=row, column=3, padx=15)
             pb = ttk.Progressbar(self.list_frame, length=120); pb.grid(row=row, column=4, padx=15)
-            
             self.list_widgets[imei] = {"route_var": v_route, "run_btn": b_run, "pause_btn": b_pause, "stop_btn": b_stop, "status_lbl": lbl_s, "pb": pb}
 
     def list_pause(self, imei):
@@ -327,8 +241,7 @@ class IotSimulatorApp:
             r_idx = self.trip_names.index(w["route_var"].get())
             if imei in self.simulators: self.simulators[imei].stop()
             sim = DeviceSimulator(imei, self.trips[r_idx], lambda s, p, r: self.list_update_ui(imei, s, p))
-            self.simulators[imei] = sim
-            sim.start()
+            self.simulators[imei] = sim; sim.start()
             w["run_btn"].config(state="disabled"); w["pause_btn"].config(state="normal"); w["stop_btn"].config(state="normal")
         except: pass
 
@@ -350,5 +263,98 @@ class IotSimulatorApp:
         if status in ["Complete", "Stopped", "Error: Connection Failed"]:
             w["run_btn"].config(state="normal"); w["stop_btn"].config(state="disabled")
 
+    # --- Tab 3: Vehicle Factory ---
+    def setup_factory_tab(self):
+        f_main = ttk.Frame(self.tab_factory, padding=30)
+        f_main.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(f_main, text="Random Vehicle Generator", font=("Arial", 14, "bold")).pack(pady=10)
+        
+        frame_input = ttk.Frame(f_main)
+        frame_input.pack(pady=10)
+        ttk.Label(frame_input, text="Number of Vehicles to Create: ").pack(side=tk.LEFT)
+        self.ent_count = ttk.Entry(frame_input, width=10)
+        self.ent_count.insert(0, "5")
+        self.ent_count.pack(side=tk.LEFT, padx=10)
+        
+        self.btn_create = ttk.Button(f_main, text="Create & Activate Vehicles", command=self.run_factory)
+        self.btn_create.pack(pady=10)
+        
+        ttk.Label(f_main, text="Process Log:", font=("Arial", 10, "bold")).pack(anchor="w", pady=(20, 5))
+        self.txt_log = scrolledtext.ScrolledText(f_main, height=20, width=100, state="disabled")
+        self.txt_log.pack(fill=tk.BOTH, expand=True)
+
+    def log_factory(self, msg):
+        self.txt_log.config(state="normal")
+        self.txt_log.insert(tk.END, msg + "\n")
+        self.txt_log.see(tk.END)
+        self.txt_log.config(state="disabled")
+
+    def run_factory(self):
+        try:
+            count = int(self.ent_count.get())
+        except ValueError:
+            messagebox.showerror("Input Error", "Please enter a valid number.")
+            return
+
+        self.btn_create.config(state="disabled")
+        self.log_factory(f"--- Starting creation of {count} vehicles ---")
+        threading.Thread(target=self._factory_thread, args=(count,), daemon=True).start()
+
+    def _factory_thread(self, count):
+        created_count = 0
+        for i in range(count):
+            self.root.after(0, lambda i=i: self.log_factory(f"Processing Vehicle {i+1}..."))
+            
+            # 1. Generate Data
+            data = utils.generate_vehicle_data()
+            imei = data['imei']
+            
+            # 2. Register
+            success, result = self.api_client.register_device(imei)
+            if not success:
+                self.root.after(0, lambda r=result: self.log_factory(f"  [Failed Register] {r}"))
+                continue
+            
+            token = result
+            self.root.after(0, lambda: self.log_factory(f"  [Registered] Token: {token[:10]}..."))
+
+            # 3. Activate
+            success_act, msg_act = self.api_client.activate_device(imei, token, data)
+            if success_act:
+                self.root.after(0, lambda im=imei: self.log_factory(f"  [Activated] IMEI: {im} - {msg_act}"))
+                utils.save_device_to_file(imei)
+                created_count += 1
+            else:
+                self.root.after(0, lambda m=msg_act: self.log_factory(f"  [Failed Activate] {m}"))
+            
+            time.sleep(0.5) # Slight delay to be nice to API
+
+        self.root.after(0, lambda c=created_count: self._factory_finished(c))
+
+    def _factory_finished(self, count):
+        self.log_factory(f"--- Finished. Successfully created: {count} ---")
+        self.btn_create.config(state="normal")
+        # Refresh device lists
+        self.devices = utils.load_devices_data()
+        self.cb_devices['values'] = self.devices
+        self.refresh_list_tab()
+        messagebox.showinfo("Factory Complete", f"Created {count} new vehicles.\nDevice lists updated.")
+
+def main():
+    root = tk.Tk()
+    
+    def launch_app(api_client):
+        root.deiconify() # Show main window
+        app = IotSimulatorApp(root, api_client)
+    
+    root.withdraw() # Hide root initially
+    
+    # Launch Login Window
+    login_win = tk.Toplevel(root)
+    LoginWindow(login_win, launch_app)
+    
+    root.mainloop()
+
 if __name__ == "__main__":
-    root = tk.Tk(); app = IotSimulatorApp(root); root.mainloop()
+    main()
