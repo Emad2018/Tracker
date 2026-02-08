@@ -6,9 +6,11 @@ import os
 import threading
 from PIL import Image, ImageTk, ImageDraw
 import time
+
 # Custom Modules
 import config
 import utils
+import process_data  # Import the processor
 from simulator import DeviceSimulator
 from api_client import APIClient
 
@@ -44,12 +46,7 @@ class LoginWindow:
     def do_login(self):
         self.btn_login.config(state="disabled")
         self.lbl_status.config(text="Authenticating...", foreground="blue")
-        
-        email = self.ent_email.get()
-        password = self.ent_pass.get()
-        
-        # Run in thread to not freeze GUI
-        threading.Thread(target=self._login_thread, args=(email, password), daemon=True).start()
+        threading.Thread(target=self._login_thread, args=(self.ent_email.get(), self.ent_pass.get()), daemon=True).start()
 
     def _login_thread(self, email, password):
         success, msg = self.api.login(email, password)
@@ -58,9 +55,8 @@ class LoginWindow:
     def _login_result(self, success, msg):
         self.btn_login.config(state="normal")
         if success:
-            self.lbl_status.config(text="Success!", foreground="green")
             self.root.destroy()
-            self.on_success(self.api) # Callback with authenticated API client
+            self.on_success(self.api)
         else:
             self.lbl_status.config(text=msg, foreground="red")
 
@@ -69,7 +65,7 @@ class IotSimulatorApp:
         self.root = root
         self.api_client = api_client
         self.root.title("IoT Simulation Control Center")
-        self.root.geometry("1400x850")
+        self.root.geometry("1400x900")
         
         self.load_data()
         self.load_icons()
@@ -82,18 +78,21 @@ class IotSimulatorApp:
         self.tab_device = ttk.Frame(self.notebook)
         self.tab_list = ttk.Frame(self.notebook)
         self.tab_factory = ttk.Frame(self.notebook)
+        self.tab_update = ttk.Frame(self.notebook) # New Tab
         
         self.notebook.add(self.tab_device, text="  Device Map View  ")
         self.notebook.add(self.tab_list, text="  Multi-Device List  ")
         self.notebook.add(self.tab_factory, text="  Vehicle Factory  ")
+        self.notebook.add(self.tab_update, text="  Data Update  ") # Add to notebook
         
         self.setup_device_tab()
         self.setup_list_tab()
         self.setup_factory_tab()
+        self.setup_update_tab() # Setup new tab
 
     def load_data(self):
         self.trips = utils.load_trips_data()
-        self.devices = utils.load_devices_data()
+        self.devices = utils.load_devices_data() # Returns List of IMEIs
         self.trip_names = [f"Route {i+1} ({len(t)} pts)" for i, t in enumerate(self.trips)]
 
     def load_icons(self):
@@ -105,9 +104,9 @@ class IotSimulatorApp:
                 ImageDraw.Draw(mask).ellipse((0, 0, 40, 40), fill=255)
                 img.putalpha(mask)
                 self.car_icon = ImageTk.PhotoImage(img)
-            except Exception as e: print(f"Icon error: {e}")
+            except Exception: pass
 
-    # --- Tab 1 & 2 (Existing functionality, kept clean) ---
+    # --- Tab 1: Device Map ---
     def setup_device_tab(self):
         paned = ttk.PanedWindow(self.tab_device, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True)
@@ -118,7 +117,6 @@ class IotSimulatorApp:
         self.cb_devices = ttk.Combobox(sidebar, textvariable=self.var_dv_imei, values=self.devices, state="readonly")
         self.cb_devices.pack(fill=tk.X, pady=(5, 15))
 
-        # (Rest of Tab 1 setup similar to original...)
         ttk.Label(sidebar, text="Route Controls:", font=("Arial", 10, "bold")).pack(anchor='w')
         nav = ttk.Frame(sidebar); nav.pack(fill=tk.X, pady=5)
         ttk.Button(nav, text="< Prev", command=lambda: self.nav_trip(-1)).pack(side=tk.LEFT, expand=True)
@@ -126,7 +124,6 @@ class IotSimulatorApp:
         
         self.lbl_route_name = ttk.Label(sidebar, text="Route 1", font=("Arial", 10, "italic"), foreground="#2980b9")
         self.lbl_route_name.pack(pady=5)
-        
         self.stats_box = ttk.Label(sidebar, text="", justify=tk.LEFT, font=("Consolas", 9))
         self.stats_box.pack(fill=tk.X, pady=10)
 
@@ -147,7 +144,6 @@ class IotSimulatorApp:
         paned.add(self.map_widget, weight=1)
         self.live_marker = None; self.current_trip_idx = 0; self.update_map_display()
 
-    # (Logic Methods for Tab 1)
     def update_map_display(self):
         self.map_widget.delete_all_path(); self.map_widget.delete_all_marker(); self.live_marker = None
         if not self.trips: return
@@ -163,7 +159,7 @@ class IotSimulatorApp:
             self.map_widget.set_position(pts[0][0], pts[0][1]); self.map_widget.set_zoom(14)
 
     def nav_trip(self, delta):
-        if 0 <= self.current_trip_idx + delta < len(self.trips):
+        if self.trips and 0 <= self.current_trip_idx + delta < len(self.trips):
             self.current_trip_idx += delta; self.update_map_display()
 
     def dv_start(self):
@@ -208,7 +204,7 @@ class IotSimulatorApp:
 
     def refresh_list_tab(self):
         for widget in self.list_frame.winfo_children(): widget.destroy()
-        cols = ["Device IMEI", "Select Route", "Simulation Controls", "Status", "Progress"]
+        cols = ["Device IMEI", "Select Route", "Controls", "Status", "Progress"]
         for c, text in enumerate(cols): ttk.Label(self.list_frame, text=text, font=("Arial", 9, "bold")).grid(row=0, column=c, padx=15, pady=10)
         
         self.list_widgets = {}
@@ -263,7 +259,7 @@ class IotSimulatorApp:
         if status in ["Complete", "Stopped", "Error: Connection Failed"]:
             w["run_btn"].config(state="normal"); w["stop_btn"].config(state="disabled")
 
-    # --- Tab 3: Vehicle Factory ---
+    # --- Tab 3: Factory ---
     def setup_factory_tab(self):
         f_main = ttk.Frame(self.tab_factory, padding=30)
         f_main.pack(fill=tk.BOTH, expand=True)
@@ -291,12 +287,8 @@ class IotSimulatorApp:
         self.txt_log.config(state="disabled")
 
     def run_factory(self):
-        try:
-            count = int(self.ent_count.get())
-        except ValueError:
-            messagebox.showerror("Input Error", "Please enter a valid number.")
-            return
-
+        try: count = int(self.ent_count.get())
+        except ValueError: messagebox.showerror("Error", "Invalid number"); return
         self.btn_create.config(state="disabled")
         self.log_factory(f"--- Starting creation of {count} vehicles ---")
         threading.Thread(target=self._factory_thread, args=(count,), daemon=True).start()
@@ -305,55 +297,171 @@ class IotSimulatorApp:
         created_count = 0
         for i in range(count):
             self.root.after(0, lambda i=i: self.log_factory(f"Processing Vehicle {i+1}..."))
-            
-            # 1. Generate Data
             data = utils.generate_vehicle_data()
             imei = data['imei']
             
-            # 2. Register
             success, result = self.api_client.register_device(imei)
             if not success:
                 self.root.after(0, lambda r=result: self.log_factory(f"  [Failed Register] {r}"))
                 continue
             
             token = result
-            self.root.after(0, lambda: self.log_factory(f"  [Registered] Token: {token[:10]}..."))
-
-            # 3. Activate
             success_act, msg_act = self.api_client.activate_device(imei, token, data)
             if success_act:
-                self.root.after(0, lambda im=imei: self.log_factory(f"  [Activated] IMEI: {im} - {msg_act}"))
-                utils.save_device_to_file(imei)
+                self.root.after(0, lambda im=imei: self.log_factory(f"  [Activated] {im}"))
+                utils.append_device_to_file(imei, "Simulation") # Auto-update CSV
                 created_count += 1
             else:
                 self.root.after(0, lambda m=msg_act: self.log_factory(f"  [Failed Activate] {m}"))
-            
-            time.sleep(0.5) # Slight delay to be nice to API
+            time.sleep(0.5)
 
         self.root.after(0, lambda c=created_count: self._factory_finished(c))
 
     def _factory_finished(self, count):
-        self.log_factory(f"--- Finished. Successfully created: {count} ---")
+        self.log_factory(f"--- Finished. Created: {count} ---")
         self.btn_create.config(state="normal")
-        # Refresh device lists
-        self.devices = utils.load_devices_data()
+        self.refresh_all_data()
+        messagebox.showinfo("Factory Complete", f"Created {count} vehicles. Lists updated.")
+
+    def refresh_all_data(self):
+        self.load_data()
         self.cb_devices['values'] = self.devices
         self.refresh_list_tab()
-        messagebox.showinfo("Factory Complete", f"Created {count} new vehicles.\nDevice lists updated.")
+
+    # --- Tab 4: Data Update (NEW) ---
+    def setup_update_tab(self):
+        f_main = ttk.Frame(self.tab_update, padding=30)
+        f_main.pack(fill=tk.BOTH, expand=True)
+
+        # 1. Device List Sync
+        frame_dev = ttk.LabelFrame(f_main, text="Device List Sync", padding=15)
+        frame_dev.pack(fill=tk.X, pady=10)
+        
+        lbl_info = ttk.Label(frame_dev, text="Fetch the latest device list from the server and update local storage (devices.csv).")
+        lbl_info.pack(anchor="w", pady=5)
+        
+        self.btn_sync_dev = ttk.Button(frame_dev, text="Sync Device List", command=self.do_sync_devices)
+        self.btn_sync_dev.pack(anchor="w", pady=5)
+        
+        self.lbl_sync_status = ttk.Label(frame_dev, text="Last Sync: Never", foreground="gray")
+        self.lbl_sync_status.pack(anchor="w")
+
+        # 2. Trip Data Update
+        frame_trip = ttk.LabelFrame(f_main, text="Trip Data Update", padding=15)
+        frame_trip.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        ttk.Label(frame_trip, text="Select a REAL device (not Simulation) to fetch logs:").pack(anchor="w")
+        
+        # Filter for non-simulation devices
+        all_devs = utils.load_devices_full()
+        real_devs = [d['imei'] for d in all_devs if d['type'] != 'Simulation']
+        
+        self.var_real_imei = tk.StringVar()
+        self.cb_real_devs = ttk.Combobox(frame_trip, textvariable=self.var_real_imei, values=real_devs, state="readonly", width=30)
+        self.cb_real_devs.pack(anchor="w", pady=5)
+        if real_devs: self.cb_real_devs.current(0)
+        
+        ttk.Label(frame_trip, text="Record Limit:").pack(anchor="w")
+        self.ent_limit = ttk.Entry(frame_trip, width=10)
+        self.ent_limit.insert(0, "100")
+        self.ent_limit.pack(anchor="w", pady=5)
+        
+        self.btn_fetch_logs = ttk.Button(frame_trip, text="Fetch & Append Logs", command=self.do_fetch_logs)
+        self.btn_fetch_logs.pack(anchor="w", pady=10)
+        
+        self.txt_update_log = scrolledtext.ScrolledText(frame_trip, height=10)
+        self.txt_update_log.pack(fill=tk.BOTH, expand=True)
+
+    def log_update(self, msg):
+        self.txt_update_log.insert(tk.END, msg + "\n")
+        self.txt_update_log.see(tk.END)
+
+    def do_sync_devices(self):
+        self.btn_sync_dev.config(state="disabled")
+        self.lbl_sync_status.config(text="Syncing...", foreground="blue")
+        threading.Thread(target=self._sync_thread, daemon=True).start()
+
+    def _sync_thread(self):
+        success, data = self.api_client.fetch_all_devices()
+        self.root.after(0, lambda: self._sync_result(success, data))
+
+    def _sync_result(self, success, data):
+        self.btn_sync_dev.config(state="normal")
+        if success:
+            utils.save_devices_list(data)
+            self.lbl_sync_status.config(text=f"Success! {len(data)} devices found.", foreground="green")
+            # Refresh UI lists
+            self.refresh_all_data()
+            # Update Real Dev Combobox
+            all_devs = utils.load_devices_full()
+            real_devs = [d['imei'] for d in all_devs if d.get('type') != 'Simulation']
+            self.cb_real_devs['values'] = real_devs
+            if real_devs: self.cb_real_devs.current(0)
+        else:
+            self.lbl_sync_status.config(text=f"Failed: {data}", foreground="red")
+
+    def do_fetch_logs(self):
+        imei = self.var_real_imei.get()
+        if not imei: 
+            return
+        
+        # --- Logic to make limit optional ---
+        raw_limit = self.ent_limit.get().strip()
+        limit = None
+        
+        if raw_limit:
+            try:
+                limit = int(raw_limit)
+            except ValueError:
+                # If they typed something that isn't a number, 
+                # you might want to alert them or just default to None
+                messagebox.showwarning("Input Error", "Please enter a valid number for the limit or leave it empty for all records.")
+                return
+        
+        self.btn_fetch_logs.config(state="disabled")
+        
+        display_text = f"{limit} records" if limit else "all records"
+        self.log_update(f"Fetching {display_text} for {imei}...")
+        
+        # Pass the 'limit' (which is now either an int or None) to the thread
+        threading.Thread(
+            target=self._fetch_logs_thread, 
+            args=(imei, limit), 
+            daemon=True
+        ).start()
+
+    def _fetch_logs_thread(self, imei, limit):
+        success, records = self.api_client.fetch_device_logs(imei, limit)
+        if success:
+            count = len(records)
+            self.root.after(0, lambda: self.log_update(f"  Got {count} records. Saving..."))
+            if count > 0:
+                # Append to carlogges.json
+                utils.append_logs_to_file(records)
+                self.root.after(0, lambda: self.log_update(f"  Saved to carlogges.json"))
+                
+                # Run Processor
+                self.root.after(0, lambda: self.log_update(f"  Processing trips..."))
+                try:
+                    process_data.process_trips()
+                    self.root.after(0, lambda: self.log_update(f"  Trips updated successfully."))
+                    # Reload Data in App
+                    self.root.after(0, self.refresh_all_data)
+                except Exception as e:
+                    self.root.after(0, lambda: self.log_update(f"  Processing Error: {e}"))
+        else:
+            self.root.after(0, lambda: self.log_update(f"  Error: {records}"))
+        
+        self.root.after(0, lambda: self.btn_fetch_logs.config(state="normal"))
 
 def main():
     root = tk.Tk()
-    
     def launch_app(api_client):
-        root.deiconify() # Show main window
-        app = IotSimulatorApp(root, api_client)
-    
-    root.withdraw() # Hide root initially
-    
-    # Launch Login Window
+        root.deiconify()
+        IotSimulatorApp(root, api_client)
+    root.withdraw()
     login_win = tk.Toplevel(root)
     LoginWindow(login_win, launch_app)
-    
     root.mainloop()
 
 if __name__ == "__main__":

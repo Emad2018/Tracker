@@ -3,6 +3,7 @@ import json
 import os
 import random
 import string
+import csv
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
 import config
@@ -27,8 +28,7 @@ def calculate_trip_stats(trip):
         start_time = datetime.strptime(trip[0]['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
         end_time = datetime.strptime(trip[-1]['timestamp'], "%Y-%m-%dT%H:%M:%SZ")
         duration = end_time - start_time
-    except:
-        pass
+    except: pass
 
     for i in range(len(trip)):
         p = trip[i]
@@ -43,12 +43,7 @@ def calculate_trip_stats(trip):
     if isinstance(duration, (str, type(None))) == False and duration.total_seconds() > 0:
         avg_s = dist / (duration.total_seconds() / 3600)
         
-    return {
-        "dist": f"{dist:.2f} km", 
-        "dur": str(duration),
-        "max_s": f"{max_speed} km/h", 
-        "avg_s": f"{avg_s:.1f} km/h"
-    }
+    return {"dist": f"{dist:.2f} km", "dur": str(duration), "max_s": f"{max_speed} km/h", "avg_s": f"{avg_s:.1f} km/h"}
 
 # --- File Loading ---
 def load_trips_data():
@@ -58,46 +53,96 @@ def load_trips_data():
     except: return []
 
 def load_devices_data():
+    """Reads devices from CSV. Returns list of IMEIs."""
     path = config.DEVICES_FILE_PRIMARY if os.path.exists(config.DEVICES_FILE_PRIMARY) else config.DEVICES_FILE_FALLBACK
+    devices = []
     if os.path.exists(path):
-        with open(path, 'r') as f: return [l.strip() for l in f if l.strip()]
-    return ["Sim_Device_1", "Sim_Device_2"]
+        try:
+            with open(path, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if 'imei' in row and row['imei']:
+                        devices.append(row['imei'])
+        except Exception:
+            # Fallback for old txt format if csv fails
+            with open(path, 'r') as f: return [l.strip() for l in f if l.strip()]
+    return devices if devices else ["Sim_Device_1", "Sim_Device_2"]
 
-def save_device_to_file(imei):
-    """Appends a new IMEI to the devices file."""
+def load_devices_full():
+    """Returns list of dicts {imei, type} for the UI."""
     path = config.DEVICES_FILE_PRIMARY if os.path.exists(config.DEVICES_FILE_PRIMARY) else config.DEVICES_FILE_FALLBACK
-    try:
-        with open(path, 'a') as f:
-            f.write(f"\n{imei}")
-    except Exception as e:
-        print(f"Error saving device: {e}")
+    data = []
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    data.append(row)
+        except: pass
+    return data
+
+def save_devices_list(devices_list):
+    """Overwrites the CSV with a full list of dicts."""
+    path = config.DEVICES_FILE_PRIMARY
+    # Ensure dir exists
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    
+    with open(path, 'w', newline='') as f:
+        fieldnames = ['imei', 'type']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for d in devices_list:
+            # key handling for case sensitivity
+            clean_d = {
+                'imei': d.get('imei') or d.get('IMEI'),
+                'type': d.get('type') or d.get('Type', 'Simulation')
+            }
+            writer.writerow(clean_d)
+
+def append_device_to_file(imei, dev_type="Simulation"):
+    """Appends a single device to the CSV."""
+    path = config.DEVICES_FILE_PRIMARY
+    exists = os.path.exists(path)
+    
+    with open(path, 'a', newline='') as f:
+        fieldnames = ['imei', 'type']
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if not exists:
+            writer.writeheader()
+        writer.writerow({'imei': imei, 'type': dev_type})
+
+def append_logs_to_file(new_records):
+    """Appends new records to carlogges.json."""
+    path = config.LOGS_FILE
+    existing_data = []
+    
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                existing_data = json.load(f)
+        except: existing_data = [] # Corrupt or empty
+        
+    # Append new data
+    existing_data.extend(new_records)
+    
+    with open(path, 'w') as f:
+        json.dump(existing_data, f, indent=4)
 
 # --- Random Data Generators ---
-COMPANIES = ["ElOmda", "LogiTrans", "FastTrack", "NileCargo", "CairoFleet", "DesertShip", "Alex Logistics", "Delta Movers", "RedSea Transport", "Giza Goods"]
-BRANDS = ["Nissan-Sunny", "Toyota-Corolla", "Hyundai-Elantra", "Kia-Cerato", "Chevrolet-Optra"]
-COLORS = ["Blue", "Red", "White", "Black", "Silver", "Grey"]
-NAMES = ["Mahmoud's Car", "Ahmed's Truck", "Omar's Van", "Khaled's Fleet", "Youssef's Transport", "Mustafa's Unit", "Hassan's Lorry"]
+COMPANIES = ["ElOmda", "LogiTrans", "FastTrack", "NileCargo"]
+BRANDS = ["Nissan-Sunny", "Toyota-Corolla", "Hyundai-Elantra"]
+COLORS = ["Blue", "Red", "White", "Black"]
+NAMES = ["Mahmoud's Car", "Ahmed's Truck", "Omar's Van"]
 
 def generate_vehicle_data():
-    imei = str(random.randint(1000000000000000, 9999999999999999)) # 16 digits
-    name = random.choice(NAMES)
-    company = random.choice(COMPANIES)
-    simcard = "+2010" + str(random.randint(10000000, 99999999))
-    brand = random.choice(BRANDS)
-    color = random.choice(COLORS)
-    
-    # License: 3 chars + 3 nums (e.g., ABC-123)
-    letters = ''.join(random.choices(string.ascii_uppercase, k=3))
-    nums = str(random.randint(100, 999))
-    license_plate = f"{letters}-{nums}"
-
+    imei = str(random.randint(1000000000000000, 9999999999999999))
     return {
         "imei": imei,
-        "name": name,
-        "company": company,
-        "simcard": simcard,
+        "name": random.choice(NAMES),
+        "company": random.choice(COMPANIES),
+        "simcard": "+2010" + str(random.randint(10000000, 99999999)),
         "type": "Simulation",
-        "brand": brand,
-        "color": color,
-        "license": license_plate
+        "brand": random.choice(BRANDS),
+        "color": random.choice(COLORS),
+        "license": f"{''.join(random.choices(string.ascii_uppercase, k=3))}-{random.randint(100, 999)}"
     }

@@ -8,17 +8,23 @@ ROOT_CA_PATH = "certificate/AmazonRootCA1.pem"
 TOPIC_PREFIX = "SimulatorData"
 
 # --- API Configuration ---
-# NOTE: device_url was empty in your file. Please replace with the correct URL.
 AUTH_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/auth"
-DEVICE_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/device"  # e.g., "https://2njc6ynilf.execute-api.us-east-1.amazonaws.com/prod/device"
+DEVICE_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/device"
+SIM_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/sim" # New URL for reading logs
 
 # Default Credentials
 DEFAULT_EMAIL = "abdelrahman.ibrahim@techno-welle.com"
-DEFAULT_PASS = "ResetPass1!"  # Replace with actual password
+DEFAULT_PASS = "ResetPass1!"
 
 # --- Data Paths ---
 TRIPS_FILE_PRIMARY = 'data/trips.json'
 TRIPS_FILE_FALLBACK = 'trips.json'
-DEVICES_FILE_PRIMARY = 'data/devices.txt'
-DEVICES_FILE_FALLBACK = 'devices.txt'
+
+# Changed from txt to csv as requested
+DEVICES_FILE_PRIMARY = 'data/devices.csv'
+DEVICES_FILE_FALLBACK = 'devices.csv'
+
+# New Logs file
+LOGS_FILE = 'data/carlogges.json'
+
 ICON_PATH = "data/car.png"
