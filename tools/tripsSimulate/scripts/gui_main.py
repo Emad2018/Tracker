@@ -150,7 +150,7 @@ class IotSimulatorApp:
         trip = self.trips[self.current_trip_idx]
         self.lbl_route_name.config(text=f"Route {self.current_trip_idx + 1}")
         stats = utils.calculate_trip_stats(trip)
-        self.stats_box.config(text=f"Dist: {stats['dist']}\nDur:  {stats['dur']}\nMax:  {stats['max_s']}\nAvg:  {stats['avg_s']}")
+        self.stats_box.config(text=f"Start Time: {stats['start']}\nEnd Time:   {stats['end']}\nDist: {stats['dist']}\nDur:  {stats['dur']}\nMax:  {stats['max_s']}\nAvg:  {stats['avg_s']}")
         pts = [(p['latitude'], p['longitude']) for p in trip]
         if pts:
             self.map_widget.set_path(pts, color="#3498db", width=3)
@@ -166,7 +166,8 @@ class IotSimulatorApp:
         imei = self.var_dv_imei.get()
         self.active_dv_imei = imei
         if imei in self.simulators: self.simulators[imei].stop()
-        sim = DeviceSimulator(imei, self.trips[self.current_trip_idx], self.dv_update_ui)
+        # NEW: Added self.api_client
+        sim = DeviceSimulator(imei, self.trips[self.current_trip_idx], self.dv_update_ui, self.api_client)
         self.simulators[imei] = sim; sim.start()
         self.btn_dv_start.config(state="disabled"); self.btn_dv_pause.config(state="normal", text="⏸ Pause"); self.btn_dv_stop.config(state="normal")
 
@@ -236,7 +237,8 @@ class IotSimulatorApp:
         try:
             r_idx = self.trip_names.index(w["route_var"].get())
             if imei in self.simulators: self.simulators[imei].stop()
-            sim = DeviceSimulator(imei, self.trips[r_idx], lambda s, p, r: self.list_update_ui(imei, s, p))
+            # NEW: Added self.api_client
+            sim = DeviceSimulator(imei, self.trips[r_idx], lambda s, p, r: self.list_update_ui(imei, s, p), self.api_client)
             self.simulators[imei] = sim; sim.start()
             w["run_btn"].config(state="disabled"); w["pause_btn"].config(state="normal"); w["stop_btn"].config(state="normal")
         except: pass
@@ -446,6 +448,76 @@ class IotSimulatorApp:
                     process_data.process_trips()
                     self.root.after(0, lambda: self.log_update(f"  Trips updated successfully."))
                     # Reload Data in App
+                    self.root.after(0, self.refresh_all_data)
+                except Exception as e:
+                    self.root.after(0, lambda: self.log_update(f"  Processing Error: {e}"))
+        else:
+            self.root.after(0, lambda: self.log_update(f"  Error: {records}"))
+        
+        self.root.after(0, lambda: self.btn_fetch_logs.config(state="normal"))
+    def do_fetch_logs(self):
+        imei = self.var_real_imei.get()
+        if not imei: return
+        
+        self.btn_fetch_logs.config(state="disabled")
+        
+        # 1. Determine the last sync time (Incremental Update Logic)
+        last_sync_time = self._get_max_timestamp_for_device(imei)
+        
+        msg = f"Fetching new records for {imei}..."
+        if last_sync_time:
+             msg = f"Fetching records after {last_sync_time}..."
+        
+        self.log_update(msg)
+        
+        # Start Thread
+        threading.Thread(
+            target=self._fetch_logs_thread, 
+            args=(imei, last_sync_time), # Pass the time, remove explicit limit to get ALL new data
+            daemon=True
+        ).start()
+
+    def _get_max_timestamp_for_device(self, imei):
+        """Helper to find the latest timestamp in local JSON file"""
+        try:
+            # Load current local data
+            if os.path.exists(config.LOGS_FILE):
+                with open(config.LOGS_FILE, 'r') as f:
+                    data = json.load(f)
+                
+                # Filter for this device
+                device_logs = [d for d in data if d.get('imei') == imei or d.get('IMEI') == imei]
+                
+                if not device_logs:
+                    return None
+                
+                # Find max timestamp
+                # Assumes timestamp format is sortable string (ISO) or int (Epoch)
+                # If your API returns milliseconds int, this works fine.
+                timestamps = [d['timestamp'] for d in device_logs if 'timestamp' in d]
+                return max(timestamps) if timestamps else None
+        except:
+            return None
+        return None
+
+    def _fetch_logs_thread(self, imei, start_time):
+        # We pass None for limit to ensure we get ALL pending updates
+        success, records = self.api_client.fetch_device_logs(imei, limit=None, start_time=start_time)
+        
+        if success:
+            count = len(records)
+            self.root.after(0, lambda: self.log_update(f"  Synced {count} new records."))
+            
+            if count > 0:
+                # Append to carlogges.json
+                utils.append_logs_to_file(records)
+                self.root.after(0, lambda: self.log_update(f"  Saved to file."))
+                
+                # Run Processor
+                self.root.after(0, lambda: self.log_update(f"  Processing trips..."))
+                try:
+                    process_data.process_trips()
+                    self.root.after(0, lambda: self.log_update(f"  Trips updated."))
                     self.root.after(0, self.refresh_all_data)
                 except Exception as e:
                     self.root.after(0, lambda: self.log_update(f"  Processing Error: {e}"))

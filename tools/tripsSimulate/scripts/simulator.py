@@ -9,10 +9,11 @@ from awsiot import mqtt5_client_builder
 import config
 
 class DeviceSimulator:
-    def __init__(self, imei, trip_data, update_cb=None):
+    def __init__(self, imei, trip_data, update_cb=None, api_client=None):
         self.imei = imei
         self.trip = trip_data
         self.update_cb = update_cb
+        self.api_client = api_client # NEW: Store API client
         self.client = None
         self.paused = False
         self.stopped = False
@@ -34,6 +35,10 @@ class DeviceSimulator:
             except: pass
 
     def _run(self):
+        # NEW: Send Start Trip API Call
+        if self.api_client:
+            self.api_client.send_trip_event("start_trip", self.imei)
+
         try:
             self.client = mqtt5_client_builder.mtls_from_path(
                 endpoint=config.ENDPOINT, cert_filepath=config.CERT_PATH, pri_key_filepath=config.KEY_PATH,
@@ -73,5 +78,10 @@ class DeviceSimulator:
                 except: time.sleep(1.0)
 
         if self.client: self.client.stop()
+        
+        # NEW: Send End Trip API Call (on complete or stop)
+        if self.api_client:
+            self.api_client.send_trip_event("end_trip", self.imei)
+
         status = "Complete" if not self.stopped else "Stopped"
         if self.update_cb: self.update_cb(status, 100 if status == "Complete" else None, None)

@@ -85,7 +85,7 @@ def endTrip(imei, enddate):
 
 def load_trips():
     try:
-        path = 'trips.json' if os.path.exists('trips.json') else 'data/trips.json'
+        path = 'trips.json' if os.path.exists('trips.json') else '../data/trips.json'
         with open(path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:

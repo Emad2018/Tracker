@@ -11,10 +11,12 @@ TOPIC_PREFIX = "SimulatorData"
 AUTH_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/auth"
 DEVICE_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/device"
 SIM_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/sim" # New URL for reading logs
+TRIP_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/trip" # NEW: Trip URL
 
 # Default Credentials
 DEFAULT_EMAIL = "abdelrahman.ibrahim@techno-welle.com"
 DEFAULT_PASS = "ResetPass1!"
+DEFAULT_DRIVER_ID = "14d82438-30c1-708f-0dbc-ff357c6a2019" # NEW: Default Driver ID
 
 # --- Data Paths ---
 TRIPS_FILE_PRIMARY = 'data/trips.json'

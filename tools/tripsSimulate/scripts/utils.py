@@ -43,7 +43,7 @@ def calculate_trip_stats(trip):
     if isinstance(duration, (str, type(None))) == False and duration.total_seconds() > 0:
         avg_s = dist / (duration.total_seconds() / 3600)
         
-    return {"dist": f"{dist:.2f} km", "dur": str(duration), "max_s": f"{max_speed} km/h", "avg_s": f"{avg_s:.1f} km/h"}
+    return {"dist": f"{dist:.2f} km", "dur": str(duration), "max_s": f"{max_speed} km/h", "avg_s": f"{avg_s:.1f} km/h", "start": start_time, "end": end_time}
 
 # --- File Loading ---
 def load_trips_data():
@@ -62,7 +62,8 @@ def load_devices_data():
                 reader = csv.DictReader(f)
                 for row in reader:
                     if 'imei' in row and row['imei']:
-                        devices.append(row['imei'])
+                        if row["type"].lower() == "simulation":
+                            devices.append(row['imei'])
         except Exception:
             # Fallback for old txt format if csv fails
             with open(path, 'r') as f: return [l.strip() for l in f if l.strip()]
