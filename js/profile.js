@@ -1,262 +1,121 @@
-const API_BASE = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/Dev";
+import { CONFIG } from './config.js';
+import { AuthService } from './auth-service.js';
+
+// --- GLOBAL EXPOSURE ---
+// We attach these to 'window' immediately so HTML onclick events can find them
+window.logout = () => {
+  AuthService.logout();
+};
+
+window.loadDevices = loadDevices;
 
 document.addEventListener("DOMContentLoaded", () => {
   loadProfile();
   loadDevices();
-
-  const editBtn = document.getElementById("editToggle");
-  const addPanel = document.getElementById("add-panel");
-
-  if (editBtn) {
-    editBtn.addEventListener("click", () => {
-      const isHidden = addPanel.classList.toggle("hidden");
-      editBtn.innerText = isHidden ? "EDIT" : "CANCEL";
-    });
-  }
 });
 
-/**
- * Format a JS Date object to "DD-MM-YYYY hh:mm:ss AM/PM"
- * @param {Date|string} dateInput - Date object or ISO string
- * @returns {string} Formatted date string
- */
-function formatDateTime(dateInput) {
-  const d = new Date(dateInput);
-  const day = d.getDate().toString().padStart(2, '0');
-  const month = (d.getMonth() + 1).toString().padStart(2, '0');
-  const year = d.getFullYear();
-
-  const h24 = d.getHours();
-  const h12 = h24 % 12 || 12;
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const s = d.getSeconds().toString().padStart(2, '0');
-  const ampm = h24 >= 12 ? 'PM' : 'AM';
-
-  return `${day}-${month}-${year} ${h12}:${m}:${s} ${ampm}`;
-}
-
-
-window.logout = function () {
-  localStorage.removeItem('idToken');
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  window.location.href = "../html/loginPage.html";
-}
-
-function checkDeviceActive(data) {
-  if (!data.timestamp) return false;
-
-  const deviceTime = new Date(data.timestamp.replace(" ", "T"));
-  const now = new Date();
-  let is_active = false;
-  const diffMinutes = Math.floor((now - deviceTime) / 60000);
-  if (diffMinutes > 15) {
-    is_active = false;
-  } else {
-    is_active = true;
-  }
-  return is_active;
-}
-
-async function loadProfile() {
-  const token = localStorage.getItem("idToken");
-  if (!token) return (window.location.href = "../html/loginPage.html");
+function loadProfile() {
+  const profileStr = localStorage.getItem("userProfile");
+  if (!profileStr) return;
 
   try {
-    const res = await fetch(`${API_BASE}/profile`, {
-      headers: { "Authorization": "Bearer " + token }
-    });
-    const profile = await res.json();
+    const p = JSON.parse(profileStr);
+    setText("p-name", p.name);
+    setText("p-email", p.email);
+    setText("p-company", p.company || "N/A");
+    const initials = p.name.split(" ").map(n => n.charAt(0).toUpperCase()).join("");
+    setText("avatar-letter", initials);
+    const role = p.policy && p.policy.role_name ? p.policy.role_name : "User";
+    setText("p-role", role.replace('_', ' ').toUpperCase());
 
-    // Basic Info
-    document.getElementById("username").innerText = profile.email.split("@")[0];
-    document.getElementById("email").innerText = profile.email;
-
-    // Group/Admin Panel Check
-    const decoded = parseJwt(token);
-    const groups = decoded?.["cognito:groups"] || [];
-
-    if (document.getElementById("role-badge") && groups.length > 0) {
-      document.getElementById("role-badge").innerText = groups[0].toUpperCase();
-    }
-
-    if (groups.includes("Super")) {
-      const adminPanel = document.getElementById("admin-panel");
-      if (adminPanel) adminPanel.classList.remove("hidden");
-    }
-  } catch (err) { console.error(err); }
+    if (p.CreatedAt) setText("p-joined", new Date(p.CreatedAt).toLocaleDateString());
+    if (p.LastLoginAt) setText("p-login", new Date(p.LastLoginAt).toLocaleString());
+  } catch (e) {
+    console.error("Error parsing profile:", e);
+  }
 }
-
 
 async function loadDevices() {
-  const res = await fetch(`${API_BASE}/devices`, {
-    headers: { "Authorization": "Bearer " + localStorage.getItem("idToken") }
-  });
-  const devices = await res.json();
-  console.log("this is devices", devices);
+  const listContainer = document.getElementById('device-list');
+  const accountId = localStorage.getItem('accountId');
 
+  // Show loading state
+  listContainer.innerHTML = `
+    <div class="col-span-full flex justify-center py-10">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>`;
 
-  const list = document.getElementById("device-list");
-  const emptyMsg = document.getElementById("no-devices");
+  try {
+    const res = await fetch(CONFIG.api.deviceUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        creator_id: accountId,
+        action: "list_all",
+        body: {}
+      })
+    });
 
-  list.innerHTML = "";
+    const data = await res.json();
+    const devices = data.devices || [];
 
-  if (!devices.length) {
-    emptyMsg.classList.remove("hidden");
-    return;
-  }
+    if (devices.length === 0) {
+      listContainer.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">No devices found in your fleet.</p>`;
+      return;
+    }
 
-  emptyMsg.classList.add("hidden");
+    listContainer.innerHTML = devices.map(d => `
+      <div class="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-50 hover:shadow-xl transition-all group flex flex-col justify-between">
+          <div>
+              <div class="flex justify-between items-start mb-4">
+                  <div class="bg-slate-900 p-3 rounded-2xl">
+                      <svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                  </div>
+                  <div class="flex flex-col items-end space-y-1">
+                      <a href="live.html?imei=${d.imei}" class="text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-tighter">
+                          Track Live →
+                      </a>
+                      <a href="trips.html?imei=${d.imei}" class="text-[10px] font-black text-pink-600 hover:text-pink-800 uppercase tracking-tighter">
+                          Trip History →
+                      </a>
+                  </div>
+              </div>
 
-  devices.forEach(device => {
-    const status = checkDeviceActive(device); // calculate real status
-
-    const row = document.createElement("div");
-    row.className = "grid grid-cols-[2fr_1fr_2fr_3fr] items-center bg-slate-50 border border-slate-100 rounded-xl p-3 hover:shadow-md transition";
-
-    row.innerHTML = `
-      <span class="font-mono text-sm font-black text-slate-800">${device.deviceId}</span>
-
-      <span class="text-[10px] font-black px-2 py-1 rounded-full 
-      ${status ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}">
-      ${status ? "ACTIVE" : "INACTIVE"}
-      </span>
-
-      <span class="text-[11px] font-bold text-slate-600">
-      ${formatDateTime(device.lastUpdate)}
-      </span>
-
-      <div class="flex gap-2 justify-end">
-          <a href="../html/live.html?device=${device.deviceId}"
-              class="text-[10px] font-black bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
-              TRACK
-          </a>
-
-          <a href="../html/trips.html?device=${device.deviceId}"
-              class="text-[10px] font-black bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
-              HISTORY
-          </a>
-
-          <button onclick="deleteDevice('${device.deviceId}')"
-              class="text-[10px] font-black bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-lg transition whitespace-nowrap">
-              DELETE
-          </button>
+              <h3 class="font-black text-slate-800 text-lg leading-tight">${d.brand}</h3>
+              <p class="text-slate-400 text-[11px] font-mono mb-4">License: ${d.license}</p>
+              
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                  <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                      <span class="block text-[8px] uppercase font-black text-slate-400 mb-0.5">Color</span>
+                      <span class="text-xs font-bold text-slate-700">${d.color || 'Standard'}</span>
+                  </div>
+                  <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                      <span class="block text-[8px] uppercase font-black text-slate-400 mb-0.5">Type</span>
+                      <span class="text-xs font-bold text-slate-700">${d.type || 'GPS Tracker'}</span>
+                  </div>
+              </div>
+          </div>
+          
+          <div class="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+              <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span class="text-[9px] font-black text-slate-500 uppercase">System Active</span>
+              </div>
+              <span class="text-[9px] bg-slate-100 px-2 py-1 rounded-lg font-bold text-slate-600">ID: ${d.imei || 'N/A'}</span>
+          </div>
       </div>
-  `;
+    `).join('');
 
-
-
-    list.appendChild(row);
-  });
-
-}
-
-async function addDevice() {
-  // Get the value from the input field instead of prompt
-  const input = document.getElementById("newDeviceId");
-  const id = input.value.trim();
-  if (!id) return; // do nothing if empty
-
-  try {
-    const res = await fetch(`${API_BASE}/devices`, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + localStorage.getItem("idToken"),
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ deviceId: id })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      console.error("Error adding device:", err);
-      alert("Failed to add device: " + (err.error || "Unknown error"));
-      return;
-    }
-
-    // Clear the input field after success
-    input.value = "";
-
-    // Reload the device list
-    loadDevices();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to add device: " + err.message);
+  } catch (e) {
+    console.error("Device load error", e);
+    listContainer.innerHTML = `<p class="col-span-full text-red-500 text-center py-10 font-bold">Failed to refresh fleet data.</p>`;
   }
 }
 
-
-async function deleteDevice(deviceId) {
-  try {
-    const res = await fetch(`${API_BASE}/devices`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": "Bearer " + localStorage.getItem("idToken"),
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ deviceId })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      console.error("Error deleting device:", err);
-      alert("Failed to delete device: " + (err.error || "Unknown error"));
-      return;
-    }
-
-    // Reload the devices list after deletion
-    loadDevices();
-  } catch (err) {
-    console.error(err);
-    alert("Failed to delete device: " + err.message);
-  }
-}
-async function createNewUser() {
-  const emailInput = document.getElementById("newUserEmail");
-  const roleInput = document.getElementById("newUserRole");
-  const statusMsg = document.getElementById("creation-status");
-  const btn = document.querySelector("#admin-panel button");
-
-  const email = emailInput.value.trim();
-  const role = roleInput.value;
-
-  if (!email) return alert("Email is required");
-
-  btn.disabled = true;
-  btn.innerText = "CREATING...";
-  statusMsg.innerText = "";
-
-  try {
-    const response = await fetch(`${API_BASE}/users`, {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + localStorage.getItem("idToken"),
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, role })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      statusMsg.className = "text-[11px] font-bold text-emerald-600";
-      statusMsg.innerText = data.message;
-      emailInput.value = "";
-    } else {
-      throw new Error(data.message || "Failed to create user");
-    }
-  } catch (error) {
-    statusMsg.className = "text-[11px] font-bold text-red-600";
-    statusMsg.innerText = "ERROR: " + error.message;
-  } finally {
-    btn.disabled = false;
-    btn.innerText = "CREATE USER";
-  }
-}
-function parseJwt(token) {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(window.atob(base64));
-  } catch (e) { return null; }
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = val || "--";
 }

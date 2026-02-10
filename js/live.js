@@ -1,94 +1,148 @@
-
 import { generateClient } from "https://esm.sh/aws-amplify@6/api";
-import { Amplifyconfig } from "./config.js"
-import { getCurrentUser, signOut } from "https://esm.sh/aws-amplify@6/auth";
+import { Amplifyconfig, CONFIG } from "./config.js";
+import { AuthService } from "./auth-service.js";
 
-//check auth state 
-await (async function authGuard() {
-    try {
-        await getCurrentUser();
-        console.log("User authenticated");
-    } catch {
-        console.warn("User not authenticated, redirecting...");
-        window.location.href = "../html/loginPage.html";
+// 1. Auth Guard
+if (!AuthService.isAuthenticated()) {
+    window.location.href = CONFIG.routes.login;
+}
+
+const client = generateClient();
+const map = L.map('map', { zoomControl: false }).setView([26.8206, 30.8025], 6);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+const createCenteredIcon = (size) => {
+    // 1. Generate a random hue (0 to 360)
+    const randomHue = Math.floor(Math.random() * 360);
+
+    return L.divIcon({
+        className: 'custom-car-icon-container',
+        html: `
+            <div style="
+                width: 40px; 
+                height: 40px; 
+                border-radius: 50%; 
+                overflow: hidden; 
+                background: white; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                border: 2px solid white;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            ">
+                <img src="https://www.citypng.com/public/uploads/preview/car-vehicle-black-icon-png-7017516950346509uykpzmm9g.png" 
+                     style="
+                        width: 100%; 
+                        height: 100%; 
+                        object-fit: cover;
+                        /* sepia(1) turns black into a brownish color so hue-rotate can work */
+                        filter: sepia(1) saturate(10) hue-rotate(${randomHue}deg) brightness(0.7);
+                     ">
+            </div>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20], // Changed to 20,20 to keep it perfectly centered
+        popupAnchor: [0, -20]
+    });
+};
+// State
+let allDevices = [];
+let activeSubscriptions = {}; // Map: imei -> subscription object
+let deviceMarkers = {};       // Map: imei -> Leaflet Marker
+let deviceDataStore = {};     // Map: imei -> Last Data Object
+let currentlyFocusedImei = null;
+
+// Initialize
+(async () => {
+    await fetchFleet();
+
+    // Check if URL has IMEI to auto-select
+    const urlParams = new URLSearchParams(window.location.search);
+    const preSelectImei = urlParams.get('imei');
+    if (preSelectImei) {
+        const checkbox = document.querySelector(`input[value="${preSelectImei}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+            toggleDevice(preSelectImei, true);
+        }
     }
 })();
 
+// --- 1. FETCH & RENDER FLEET ---
+async function fetchFleet() {
+    const listContainer = document.getElementById('fleet-list');
+    const accountId = localStorage.getItem('accountId');
 
+    try {
+        const res = await fetch(CONFIG.api.deviceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ creator_id: accountId, action: "list_all", body: {} })
+        });
+        const data = await res.json();
 
-const client = generateClient();
-const EGYPT_COORDS = [26.8206, 30.8025];
-const OPERATOR_MAP = {
-    "60201": "Orange EG", "60202": "Vodafone EG", "60203": "Etisalat EG", "60204": "WE EG"
-};
-const OFFLINE_THRESHOLD_MS = 10 * 60 * 1000; // 10 Minutes in milliseconds
+        if (data.devices) {
+            allDevices = data.devices || [];
+        }
 
-// --- MAP SETUP ---
-const map = L.map('map', { closePopupOnClick: true, zoomControl: false }).setView(EGYPT_COORDS, 6);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(map);
-L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-const createCenteredIcon = (colorClass, size) => L.divIcon({
-    className: '',
-    html: `<img src="https://res.cloudinary.com/dx20j6wpl/image/upload/a_90/v1768313910/car_lxaigz.png" class="${colorClass}" style="width:${size[0]}px; height:${size[1]}px;">`,
-    iconSize: size, iconAnchor: [size[0] / 2, size[1]], popupAnchor: [0, -size[1]]
-});
-
-// --- STATE ---
-let deviceMarker = null;
-let subscription = null;
-let isFirstLoad = true;
-
-const params = new URLSearchParams(window.location.search);
-const deviceId = params.get('device');
-
-const deviceInput = document.getElementById('device-id');
-if (deviceInput) deviceInput.value = deviceId;
-
-
-const statusBadge = document.getElementById('status-badge');
-const footerMsg = document.getElementById('footer-msg');
-
-window.logout = async function () {
-    await signOut();
-    window.location.href = "../html/loginPage.html";
-}
-
-
-// --- INIT ---
-const storedImei = deviceId || localStorage.getItem('lastImei') || "";
-if (storedImei) {
-    deviceInput.value = storedImei;
-    initConnection(storedImei);
-}
-
-document.getElementById('set-btn').addEventListener('click', () => {
-    const id = deviceInput.value.trim();
-    if (id) {
-        localStorage.setItem('lastImei', id);
-        initConnection(id);
+        renderFleetList(listContainer);
+    } catch (e) {
+        console.error("Fleet load error", e);
+        listContainer.innerHTML = `<div class="p-4 text-red-500 text-xs">Failed to load fleet</div>`;
     }
-});
+}
 
-// --- CORE LOGIC ---
-
-async function initConnection(imei) {
-    // Reset UI for connection attempt
-    isFirstLoad = true;
-    updateStatusBadge('connecting');
-
-    if (subscription) {
-        subscription.unsubscribe();
-        subscription = null;
+function renderFleetList(container) {
+    container.innerHTML = "";
+    if (allDevices.length === 0) {
+        container.innerHTML = `<div class="p-4 text-slate-400 text-xs text-center">No devices found</div>`;
+        return;
     }
 
-    // 1. Fetch Initial Data
-    await fetchInitialData(imei);
+    allDevices.forEach(d => {
+        const item = document.createElement('div');
+        item.className = "flex items-center p-3 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition cursor-pointer group";
+        item.innerHTML = `
+            <input type="checkbox" value="${d.imei}" class="device-check w-4 h-4 text-blue-600 rounded mr-3 cursor-pointer">
+            <div class="flex-1" onclick="focusDevice('${d.imei}')">
+                <div class="flex justify-between">
+                    <span class="font-bold text-sm text-slate-800">${d.brand} <span class="font-normal text-slate-500 text-xs">(${d.color})</span></span>
+                    <span id="status-${d.imei}" class="text-[9px] font-bold uppercase text-slate-400">OFFLINE</span>
+                </div>
+                <div class="text-[10px] text-slate-500 font-mono">${d.imei}</div>
+            </div>
+        `;
 
-    // 2. Start Subscription (Regardless of offline/online, we listen for new data)
-    startSubscription(imei);
+        // Handle Checkbox (Subscribe/Unsubscribe)
+        const checkbox = item.querySelector('input');
+        checkbox.addEventListener('change', (e) => toggleDevice(d.imei, e.target.checked));
+
+        container.appendChild(item);
+    });
 }
 
+// --- 2. SUBSCRIPTION MANAGEMENT ---
+function toggleDevice(imei, isChecked) {
+    if (isChecked) {
+        if (!activeSubscriptions[imei]) {
+            // 1. Get last known data immediately
+            fetchInitialData(imei);
+            // 2. Start live subscription
+            subscribeToDevice(imei);
+        }
+    } else {
+        if (activeSubscriptions[imei]) {
+            activeSubscriptions[imei].unsubscribe();
+            delete activeSubscriptions[imei];
+        }
+        if (deviceMarkers[imei]) {
+            map.removeLayer(deviceMarkers[imei]);
+            delete deviceMarkers[imei];
+        }
+    }
+    updateMapBounds();
+    updateActiveCount();
+}
 async function fetchInitialData(imei) {
     const getQuery = `
         query GetStatus($imei: String!) {
@@ -104,24 +158,16 @@ async function fetchInitialData(imei) {
             query: getQuery,
             variables: { imei: imei }
         });
-
         const data = response.data.getVehicleLastStatus;
-
         if (data) {
-            handleNewData(data);
-        } else {
-            // Case: Device ID Not Found
-            clearAllData();
-            updateStatusBadge('not_found');
-            document.getElementById('panel-imei').innerText = imei;
+            // Update UI with historical/last data immediately
+            updateDeviceData(imei, data);
         }
     } catch (err) {
-        console.error("Init Error:", err);
-        updateStatusBadge('offline', "Connection Error");
+        console.error("Initial Fetch Error:", err);
     }
 }
-
-function startSubscription(imei) {
+function subscribeToDevice(imei) {
     const subQuery = `
         subscription OnUpdate($imei: String!) {
             onVehicleUpdate(imei: $imei) {
@@ -131,175 +177,105 @@ function startSubscription(imei) {
             }
         }`;
 
-    subscription = client.graphql({
-        query: subQuery,
-        variables: { imei: imei }
-    }).subscribe({
-        next: ({ data }) => {
-            const v = data.onVehicleUpdate;
-            if (v) handleNewData(v);
-        },
-        error: (err) => {
-            console.error("Sub Error:", err);
-        }
-    });
+    try {
+        const sub = client.graphql({
+            query: subQuery,
+            variables: { imei: imei },
+
+        }).subscribe({
+            next: ({ data }) => {
+                const tripData = data.onVehicleUpdate;
+                updateDeviceData(imei, tripData);
+            },
+            error: (err) => console.error(`Sub error [${imei}]:`, err)
+        });
+
+        activeSubscriptions[imei] = sub;
+    } catch (e) {
+        console.error("Sub setup error", e);
+    }
 }
 
-// --- LOGIC HANDLERS ---
+// --- 3. MAP & DATA UPDATE ---
+function updateDeviceData(imei, data) {
+    deviceDataStore[imei] = data;
 
-function handleNewData(data) {
-    const now = Date.now();
-    const lastPing = parseInt(data.timestamp); // Assuming timestamp is epoch ms
-    const diff = now - lastPing;
+    // 1. Update List Status
+    const statusEl = document.getElementById(`status-${imei}`);
+    if (statusEl) {
+        statusEl.innerText = data.speed_gnss > 0 ? "MOVING" : "IDLE";
+        statusEl.className = `text-[9px] font-bold uppercase ${data.speed_gnss > 0 ? 'text-green-600' : 'text-orange-500'}`;
+    }
 
-    // Determine Status based on Time
-    if (diff > OFFLINE_THRESHOLD_MS) {
-        updateStatusBadge('offline', "Device is offline");
+    // 2. Update/Create Marker
+    const lat = parseFloat(data.latitude);
+    const lng = parseFloat(data.longitude);
+    if (!lat || !lng) return;
+
+    if (deviceMarkers[imei]) {
+        // Move existing
+        const marker = deviceMarkers[imei];
+        marker.setLatLng([lat, lng]);
     } else {
-        updateStatusBadge('live');
+        // Create New
+
+        const marker = L.marker([lat, lng], { icon: createCenteredIcon(40) }).addTo(map);
+        marker.on('click', () => focusDevice(imei));
+        deviceMarkers[imei] = marker;
+        updateMapBounds();
     }
 
-    updateDashboard(data);
-}
-
-// --- UI UPDATERS ---
-
-function updateStatusBadge(status, msg = "") {
-    // Reset classes
-    statusBadge.className = "status-badge";
-
-    if (status === 'live') {
-        statusBadge.innerText = "ONLINE";
-        statusBadge.classList.add('badge-live');
-        footerMsg.innerText = "Socket Connected | Live Data";
-        footerMsg.className = "text-[10px] uppercase tracking-widest text-green-600 font-bold";
-    }
-    else if (status === 'offline') {
-        statusBadge.innerText = "OFFLINE";
-        statusBadge.classList.add('badge-offline');
-        footerMsg.innerText = msg || "Device Offline";
-        footerMsg.className = "text-[10px] uppercase tracking-widest text-red-500 font-bold";
-    }
-    else if (status === 'not_found') {
-        statusBadge.innerText = "NOT FOUND";
-        statusBadge.classList.add('badge-notfound');
-        footerMsg.innerText = "Device ID Not Registered";
-        footerMsg.className = "text-[10px] uppercase tracking-widest text-slate-500 font-bold";
-    }
-    else if (status === 'connecting') {
-        statusBadge.innerText = "CONNECTING";
-        statusBadge.classList.add('badge-waiting');
-        footerMsg.innerText = "Establishing Connection...";
-        footerMsg.className = "text-[10px] uppercase tracking-widest text-blue-500 font-bold";
+    // 3. Update Panel if focused
+    if (currentlyFocusedImei === imei) {
+        renderPanel(imei);
     }
 }
 
-function clearAllData() {
-    if (deviceMarker) {
-        map.removeLayer(deviceMarker);
-        deviceMarker = null;
+// Global scope for onclick
+window.focusDevice = function (imei) {
+    currentlyFocusedImei = imei;
+    const checkbox = document.querySelector(`input[value="${imei}"]`);
+    if (checkbox && !checkbox.checked) {
+        checkbox.checked = true;
+        toggleDevice(imei, true);
     }
-    // Clear Panel Data
-    document.getElementById('panel-ping').innerText = "--";
-    document.getElementById('panel-imei').innerText = "--";
-
-    // Clear Telemetry
-    document.getElementById('speed').innerText = "0";
-    document.getElementById('odo').innerText = "0.00 km";
-    document.getElementById('movement').innerText = "--";
-    document.getElementById('ignition').innerText = "N/A";
-    document.getElementById('ignition').className = "inline-block px-3 py-1 rounded-full text-[9px] font-black bg-slate-100 text-slate-400 uppercase";
-
-    // Clear Diagnostics
-    document.getElementById('sats').innerText = "--";
-    document.getElementById('battery').innerText = "--";
-    document.getElementById('alt').innerText = "--";
-    document.getElementById('gnss-status').innerText = "--";
-    document.getElementById('operator').innerText = "--";
-
-    // Reset Bars
-    const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
-    bars.forEach(bar => bar.classList.remove('active'));
-}
-
-function updateDashboard(data) {
-    if (!data.latitude) return;
-
-    const pos = [parseFloat(data.latitude), parseFloat(data.longitude)];
-
-    // 1. Map Logic
-    if (!deviceMarker) {
-        deviceMarker = L.marker(pos, { icon: createCenteredIcon('marker-blue', [75, 75]) }).addTo(map);
-        map.setView(pos, 15);
-        isFirstLoad = false;
-    } else {
-        deviceMarker.setLatLng(pos);
-        if (isFirstLoad) {
-            map.setView(pos, 15);
-            isFirstLoad = false;
-        } else {
-            map.panTo(pos);
-        }
+    if (deviceMarkers[imei]) {
+        map.setView(deviceMarkers[imei].getLatLng(), 15);
     }
+    renderPanel(imei);
+};
+function renderPanel(imei) {
+    const data = deviceDataStore[imei];
+    const device = allDevices.find(d => d.imei === imei);
+    if (!data || !device) return;
 
-    deviceMarker.bindPopup(`<b>IMEI:</b> ${data.imei}<br>Last seen: ${new Date(parseInt(data.timestamp)).toLocaleTimeString()}`);
+    const panel = document.getElementById('info-panel');
+    panel.classList.remove('hidden');
 
-    // 2. Status Panel Updates
-    document.getElementById('panel-imei').innerText = data.imei;
-    // const timeStr = data.timestamp ? new Date(parseInt(data.timestamp)).toLocaleString() : "--";
+    document.getElementById('panel-name').innerText = device.brand;
+    document.getElementById('panel-imei').innerText = imei;
+    document.getElementById('panel-speed').innerHTML = `${Math.round(data.speed_gnss || 0)} <span class="text-[10px]">km/h</span>`;
 
-    //change to custom format
-    document.getElementById('panel-ping').innerText = data.timestamp ? (() => { const d = new Date(+data.timestamp), h = d.getHours() % 12 || 12, m = d.getMinutes().toString().padStart(2, '0'), s = d.getSeconds().toString().padStart(2, '0'), ampm = d.getHours() >= 12 ? 'PM' : 'AM'; return `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()} ${h}:${m}:${s} ${ampm}` })() : "--";
+    const ignEl = document.getElementById('panel-ign');
+    ignEl.innerText = data.ignition ? "ON" : "OFF";
+    ignEl.className = `text-xs font-bold mt-1 ${data.ignition ? 'text-green-600' : 'text-slate-400'}`;
 
-    // Determine color class based on total strength
-    // --- 3. GSM Signal Logic ---
-    const gsmVal = parseInt(data.gsm_signal_strength) || 0;
-    const bars = document.getElementById('signal-bars').querySelectorAll('.sig-bar');
-
-    // Map the numeric value to a color name
-    let colorClass = "very-poor";
-    if (gsmVal >= 5) colorClass = "excellent";
-    else if (gsmVal >= 4) colorClass = "good";
-    else if (gsmVal >= 3) colorClass = "fair";
-    else if (gsmVal >= 2) colorClass = "poor";
-
-    bars.forEach((bar, i) => {
-        // 1. Always keep the base 'sig-bar' class so it doesn't disappear
-        // 2. Remove any previous color/active classes
-        bar.classList.remove('active', 'excellent', 'good', 'fair', 'poor', 'very-poor');
-
-        // 3. Add 'active' and the color class only if gsmVal is higher than this bar's index
-        if (gsmVal > i) {
-            bar.classList.add('active');
-            bar.classList.add(colorClass);
-        }
-    });
-
-    // 4. Telemetry Updates
-    document.getElementById('speed').innerText = Math.round(data.speed_gnss || 0);
-    const odoKm = (parseFloat(data.total_odometer_m) || 0) / 1000;
-    document.getElementById('odo').innerText = odoKm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " km";
-
-    const isMoving = data.speed_gnss > 2;
-    document.getElementById('movement').innerText = isMoving ? "Moving" : "Stationary";
-    document.getElementById('movement').className = `text-sm font-black uppercase ${isMoving ? 'text-blue-600' : 'text-slate-400'}`;
-
-    const ign = document.getElementById('ignition');
-    ign.innerText = data.ignition === 1 ? "IGNITION ON" : "IGNITION OFF";
-    ign.className = `px-3 py-1 rounded-full text-[9px] font-black uppercase ${data.ignition === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-
-    // 5. Diagnostics
+    document.getElementById('panel-odo').innerText = (data.total_odometer_m || 0).toFixed(1) + " km";
     const gnssStatusMap = { 0: "GNSS OFF", 1: "GNSS ON (Fix)", 2: "GNSS ON (No Fix)", 3: "Sleep", 4: "Invalid" };
-    document.getElementById('gnss-status').innerText = gnssStatusMap[data.gnss_status] || "Searching...";
-
-    document.getElementById('sats').innerText = data.satellites || 0;
-    document.getElementById('alt').innerText = (data.altitude || 0) + " m";
-    document.getElementById('operator').innerText = OPERATOR_MAP[data.active_gsm_operator] || data.active_gsm_operator || "N/A";
-
-    const v = parseFloat(data.battery_voltage_v) || 0;
-    document.getElementById('battery').innerText = v.toFixed(2) / 1000 + " V";
-    document.getElementById('battery-alert').classList.toggle('hidden', v >= 10);
+    document.getElementById('panel-gnss').innerText = gnssStatusMap[data.gnss_status] || "Unknown";
+    document.getElementById('panel-batt').innerText = (data.battery_voltage_v / 1000).toFixed(1) + " V";
+    document.getElementById('panel-sats').innerText = data.satellites;
+    document.getElementById('panel-time').innerText = new Date(data.timestamp).toLocaleTimeString();
 }
 
-// Fix map rendering on load
-setTimeout(() => map.invalidateSize(), 500);
+function updateMapBounds() {
+    const markers = Object.values(deviceMarkers);
+    if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+
+function updateActiveCount() {
+    document.getElementById('active-count').innerText = Object.keys(activeSubscriptions).length;
+}
