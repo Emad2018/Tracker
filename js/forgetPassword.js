@@ -41,16 +41,12 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.hide("step2Error");
 
         try {
+            // Updated to pass email, code, and new password
             await AuthService.confirmPassword(userEmail, code, newPass);
 
-            // 1. Hide the button and error message
             UI.hide("resetBtn");
             UI.hide("step2Error");
-
-            // 2. Show Success Message
             UI.show("successMessage");
-
-            // 3. Start 10-second countdown
             startRedirectTimer(10);
 
         } catch (err) {
@@ -60,17 +56,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-/**
- * Handles the redirect countdown logic
- */
 function startRedirectTimer(seconds) {
     const countdownEl = document.getElementById("countdown");
     let timeLeft = seconds;
-
     const interval = setInterval(() => {
         timeLeft--;
-        countdownEl.textContent = timeLeft;
-
+        if (countdownEl) countdownEl.textContent = timeLeft;
         if (timeLeft <= 0) {
             clearInterval(interval);
             window.location.href = "loginPage.html";
