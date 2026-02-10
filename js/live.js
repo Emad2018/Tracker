@@ -6,7 +6,9 @@ import { AuthService } from "./auth-service.js";
 if (!AuthService.isAuthenticated()) {
     window.location.href = CONFIG.routes.login;
 }
-
+window.logout = () => {
+    AuthService.logout();
+};
 const client = generateClient();
 const map = L.map('map', { zoomControl: false }).setView([26.8206, 30.8025], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);

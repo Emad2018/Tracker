@@ -2,12 +2,15 @@
  * TRIPS HISTORY LOGIC
  * Includes: Map Initialization, Marker Coloring, and Modal Fixes
  */
-
+import { Amplifyconfig, CONFIG } from "./config.js";
+import { AuthService } from "./auth-service.js";
 const TRIPS_API = "https://yjzamkco75.execute-api.us-east-1.amazonaws.com/production/trips";
 
 // 1. Initialize the Modal Map
 const tripMap = L.map('trip-map').setView([0, 0], 2);
-
+if (!AuthService.isAuthenticated()) {
+    window.location.href = CONFIG.routes.login;
+}
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 18
@@ -15,7 +18,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let pathLayer = L.layerGroup().addTo(tripMap);
 
-window.logout =function() {
+window.logout = function () {
     localStorage.removeItem('idToken');
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -34,11 +37,11 @@ window.logout =function() {
 //     document.getElementById('to').value = today;
 // });
 
-// 2. Global State & Page Init
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1️⃣ اقرأ الـ deviceId من URL query string
     const params = new URLSearchParams(window.location.search);
-    const deviceIdFromProfile = params.get('device');
+    const deviceIdFromProfile = params.get('imei');
 
     // 2️⃣ خزن في input و localStorage لو موجود
     if (deviceIdFromProfile) {
@@ -55,13 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('from').value = today;
     document.getElementById('to').value = today;
 
-    // لو عايز، ممكن تعمل loadTrips تلقائي بعد ما يحط الـ deviceId
     if (document.getElementById('device-id').value) {
         loadTrips();
     }
 });
 
-function saveDeviceId() {
+window.saveDeviceId = function saveDeviceId() {
     const id = document.getElementById('device-id').value.trim();
     if (id) {
         localStorage.setItem('lastImei', id);
@@ -81,7 +83,7 @@ function formatDuration(seconds) {
 /**
  * UPDATED: Fetches trips using imei and millisecond timestamps
  */
-async function loadTrips() {
+window.loadTrips = async function loadTrips() {
     const imei = document.getElementById('device-id').value.trim();
     const fromStr = document.getElementById('from').value;
     const toStr = document.getElementById('to').value;

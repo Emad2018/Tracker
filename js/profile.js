@@ -3,6 +3,9 @@ import { AuthService } from './auth-service.js';
 
 // --- GLOBAL EXPOSURE ---
 // We attach these to 'window' immediately so HTML onclick events can find them
+if (!AuthService.isAuthenticated()) {
+  window.location.href = CONFIG.routes.login;
+}
 window.logout = () => {
   AuthService.logout();
 };
