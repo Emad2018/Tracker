@@ -3,109 +3,95 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Trip History | FleetTrack</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip History | TW FleetMarschall</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* Custom Marker Colors using CSS Hue-Rotate */
-        .marker-green {
-            filter: hue-rotate(260deg) brightness(90%) saturate(150%);
+        .marker-icon {
+            filter: hue-rotate(140deg);
         }
-
-        /* Green */
-        .marker-red {
-            filter: hue-rotate(160deg) brightness(90%) saturate(150%);
-        }
-
-        /* Red */
-        .marker-orange {
-            filter: hue-rotate(210deg) brightness(100%) saturate(200%);
-        }
-
-        /* Orange */
     </style>
 </head>
 
-<body class="bg-slate-50 min-h-screen flex flex-col">
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-900">
+
     <nav class="bg-[#0b1426] text-white p-3 px-6 flex justify-between items-center shadow-2xl sticky top-0 z-[1000]">
         <a href="profile.html">
             <div class="flex items-center space-x-4">
-                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" alt="TW Logo"
-                    class="h-10 w-auto">
+                <img src="https://techno-welle.com/wp-content/uploads/2025/08/Group-86.png" class="h-10 w-auto">
                 <div class="flex flex-col">
                     <span class="font-black text-lg leading-tight tracking-tight">TW <span
                             class="text-pink-400">FleetMarschall</span></span>
-                    <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Real-Time
-                        Intelligence</span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold">Trip History</span>
                 </div>
             </div>
         </a>
-        <div class="flex items-center space-x-6">
-            <div class="flex">
-                <button onclick="logout()"
-                    class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">LOGOUT</button>
-            </div>
-            <div class="flex">
-                <a href="profile.html"
-                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">
-                    PROFILE</a>
-            </div>
-            <div class="flex bg-[#1a253d] rounded-xl p-1 shadow-inner">
-                <a href="live.html"
-                    class="text-slate-400 hover:text-white px-6 py-2 rounded-lg text-xs font-bold transition">LIVE
-                    VIEW</a>
-                <a href="#"
-                    class="bg-blue-600 text-white px-6 py-2 rounded-lg text-xs font-bold transition shadow-lg">TRIP
-                    HISTORY</a>
-            </div>
-
-            <div class="flex items-center bg-[#1a253d] border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-lg">
-                <div class="flex flex-col mr-4">
-                    <label class="text-[8px] font-black text-slate-500 uppercase">Tracking Target</label>
-                    <input type="text" id="device-id"
-                        class="bg-transparent border-none outline-none text-blue-400 font-mono text-sm w-28"
-                        placeholder="Enter ID...">
-                </div>
-                <button onclick="saveDeviceId()"
-                    class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-lg transition-all active:scale-95">SET</button>
-            </div>
+        <div class="flex bg-[#1a253d] rounded-xl p-1 shadow-inner">
+            <a href="profile.html"
+                class="text-slate-400 hover:text-white px-6 py-2  uppercase rounded-lg text-xs font-bold transition">
+                PROFILE</a>
+            <a href="live.html"
+                class="text-slate-400 hover:text-white px-6 py-2 uppercase rounded-lg text-xs font-bold transition">LIVE
+                Tracking</a>
+            <a href="#"
+                class="bg-blue-600 text-white px-6 py-2  uppercase rounded-lg text-xs font-bold transition shadow-lg">TRIP
+                HISTORY</a>
+        </div>
+        <button onclick="logout()"
+            class="text-xs font-bold bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition border border-slate-700">
+            LOGOUT
+        </button>
         </div>
     </nav>
 
-    <main class="container mx-auto p-6 space-y-6 flex-grow">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex gap-4 items-end flex-wrap">
-            <div class="flex-1 min-w-[200px]"><label
-                    class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label><input
-                    type="date" id="from" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-            <div class="flex-1 min-w-[200px]"><label
-                    class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label><input type="date"
-                    id="to" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+    <main class="flex-1 max-w-7xl mx-auto w-full p-6">
+
+        <div
+            class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Device IMEI</label>
+                <input type="text" id="device-id" placeholder="e.g. 86445407..."
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label>
+                <input type="date" id="from"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">To Date</label>
+                <input type="date" id="to"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition">
+            </div>
             <button onclick="loadTrips()"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold text-sm h-[40px]">Search
-                Trips</button>
+                class="bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-200 transition transform hover:-translate-y-0.5">
+                Search Trips
+            </button>
         </div>
-        <div id="trip-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <div id="trip-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center text-slate-400 py-10 text-sm">
+                Enter an IMEI and Date Range to view history.
+            </div>
+        </div>
     </main>
 
     <div id="map-modal"
         class="hidden fixed inset-0 bg-slate-900/80 z-[2000] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-5xl rounded-3xl p-6 relative shadow-2xl">
-            <button onclick="closeMap()"
-                class="absolute top-4 right-6 text-3xl text-slate-400 hover:text-slate-600">&times;</button>
-            <h3 class="font-bold text-xl text-slate-800 mb-4">Trip Route Details</h3>
-            <div id="trip-map" class="h-[500px] w-full rounded-xl"></div>
+        <div class="bg-white w-full max-w-5xl rounded-3xl p-4 md:p-6 relative shadow-2xl flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-xl text-slate-800">Trip Route Details</h3>
+                <button onclick="closeMap()"
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center transition">&times;</button>
+            </div>
+            <div id="trip-map" class="flex-1 w-full rounded-2xl bg-slate-100 border border-slate-200"></div>
         </div>
     </div>
-    <footer
-        class="bg-white border-t border-slate-200 p-4 px-8 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="flex items-center space-x-8">
-            <img src="https://techno-welle.com/wp-content/uploads/2025/03/Group-8-1.svg" alt="Techno Welle"
-                class="h-6 opacity-80">
-        </div>
 
-    </footer>
     <script type="module" src="../js/trips.js"></script>
+
 </body>
 
 </html>
