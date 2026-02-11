@@ -7,7 +7,7 @@ export const CONFIG = {
         deviceUrl: "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/device"
     },
     routes: {
-        dashboard: "html/profile.html",
+        dashboard: "profile.html",
         login: "loginPage.html"
     }
 };
