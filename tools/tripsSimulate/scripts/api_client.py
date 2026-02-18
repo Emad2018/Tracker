@@ -11,14 +11,16 @@ class APIClient:
 
     def login(self, email, password):
         url = config.AUTH_URL
-        payload = {"action": "login", "email": email, "password": password}
+        payload = {"operation": "login","body": {"email": email,"password": password}}
+
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
             data = response.json()
             if data.get("status") == "SUCCESS":
                 self.access_token = data.get("tokens", {}).get("access_token")
-                self.account_id = data.get("user_profile", {}).get("id")
+                self.account_id = data.get("user_profile", {}).get("user_id")
+                self.company_id = data.get("user_profile", {}).get("company_id")
                 return True, "Login Successful"
             else:
                 return False, f"Login Failed: {data.get('message', 'Unknown error')}"
@@ -27,11 +29,9 @@ class APIClient:
 
     def register_device(self, imei):
         if not config.DEVICE_URL: return False, "Config Error"
-        payload = {
-            "creator_id": self.account_id,
-            "action": "register",
-            "body": {"imei": imei, "device_model": "Teltonika-FMC150"}
-        }
+        
+        payload = {"id": self.account_id,"operation": "register","body": {"imei": imei, "model": "Teltonika-FMC150"}}
+        
         try:
             response = requests.post(config.DEVICE_URL, json=payload)
             response.raise_for_status()
@@ -42,14 +42,15 @@ class APIClient:
 
     def activate_device(self, imei, token, metadata):
         payload = {
-            "creator_id": self.account_id,
-            "action": "activate",
+
+            "id": self.account_id,
+            "operation": "create",
             "body": {
                 "imei": imei, "token": token,
-                "name": metadata['name'], "company": metadata['company'],
+                "name": metadata['name'], "company_id": self.company_id,
                 "simcard": metadata['simcard'], "type": metadata['type'],
                 "brand": metadata['brand'], "color": metadata['color'],
-                "license": metadata['license']
+                "Plate_Number": metadata['license'],"model" :"Teltonika-FMC150"
             }
         }
         try:
@@ -62,14 +63,15 @@ class APIClient:
         """Fetches the list of all devices from the cloud."""
         payload = {
             "creator_id": self.account_id,
-            "action": "list_all",
-            "body": {}
+            "operation": "list",
+            "body": {
+                "company_id": self.company_id
+            }
         }
         try:
             response = requests.post(config.DEVICE_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            
             # The API returns a nested JSON string in "body", we need to parse it
             if isinstance(data.get("devices"), list):
                 return True, data.get("devices", [])
@@ -135,10 +137,10 @@ class APIClient:
 
         return True, all_records
 
-    def send_trip_event(self, action, imei):
+    def send_trip_event(self, operation, imei):
         """
         Sends start_trip or end_trip event.
-        action: 'start_trip' or 'end_trip'
+        operation: 'start_trip' or 'end_trip'
         """
         if not config.TRIP_URL: return
         
@@ -147,26 +149,28 @@ class APIClient:
 
         body_data = {
             "imei": imei,
-            "driver_id": config.DEFAULT_DRIVER_ID
+            "driver_id": config.DEFAULT_DRIVER_ID,
+            "company_id":self.company_id
         }
 
-        if action == "start_trip":
+        if operation == "start_trip":
             body_data["client_id"] = ""
             body_data["start_date"] = current_time
-        elif action == "end_trip":
+        elif operation == "end_trip":
             body_data["end_date"] = current_time
 
         payload = {
-            "action": action,
+            "id":self.account_id,
+            "operation": operation,
             "body": body_data
         }
 
         try:
             # print(f"Sending {action} for {imei}...") # Debug
-            print(f"Payload for {action}: {json.dumps(payload)}") # Debug
+            print(f"Payload for {operation}: {json.dumps(payload)}") # Debug
             response = requests.post(config.TRIP_URL, json=payload)
             if response.status_code != 200:
-                print(f"Failed to send trip event ({action}): {response.text}")
-            print(f"{action} response: {response.status_code} - {response.text}") # Debug
+                print(f"Failed to send trip event ({operation}): {response.text}")
+            print(f"{operation} response: {response.status_code} - {response.text}") # Debug
         except Exception as e:
-            print(f"Failed to send trip event ({action}): {e}")
+            print(f"Failed to send trip event ({operation}): {e}")
