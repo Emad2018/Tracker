@@ -170,7 +170,7 @@ function showMap(trip) {
     // Clear previous layers
     pathLayer.clearLayers();
 
-    const tripData = trip.trip_data || {};
+    const tripData = trip.trip_stats || {};
     const points = tripData.points || []; // Points are now [[lat, lng], [lat, lng]]
 
     if (points.length === 0) {
