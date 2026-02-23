@@ -28,37 +28,45 @@ export const AuthService = {
     login: async (email, password) => {
         // Postman: { "action": "login", "email": "...", "password": "..." }
         return await AuthService._request({
-            action: 'login',
-            email: email,
-            password: password
+            operation: 'login',
+            body: {
+                email: email,
+                password: password
+            }
         });
     },
 
     completeNewPassword: async (email, newPassword, session) => {
         // Postman: { "action": "force_password_change", "email": "...", "new_password": "...", "session": "..." }
         return await AuthService._request({
-            action: 'force_password_change',
-            email: email,
-            new_password: newPassword,
-            session: session
+            operation: 'force_password_change',
+            body: {
+                email: email,
+                new_password: newPassword,
+                session: session
+            }
         });
     },
 
     forgotPassword: async (email) => {
         // Postman: { "action": "forgot_password", "email": "..." }
         return await AuthService._request({
-            action: 'forgot_password',
-            email: email
+            operation: 'forgot_password',
+            body: {
+                email: email,
+            }
         });
     },
 
     confirmPassword: async (email, code, newPassword) => {
         // Postman: { "action": "confirm_reset", "email": "...", "code": "...", "new_password": "..." }
         return await AuthService._request({
-            action: 'confirm_reset',
-            email: email,
-            code: code,
-            new_password: newPassword
+            operation: 'confirm_reset',
+            body: {
+                email: email,
+                code: code,
+                new_password: newPassword
+            }
         });
     },
 
@@ -78,8 +86,8 @@ export const AuthService = {
         // 2. Save User Profile
         if (data.user_profile) {
             // Save ID specifically for easy access
-            if (data.user_profile.id) localStorage.setItem("accountId", data.user_profile.id);
-
+            if (data.user_profile.user_id) localStorage.setItem("accountId", data.user_profile.user_id);
+            if (data.user_profile.company_id) localStorage.setItem("company_id", data.user_profile.company_id);
             // Save the full object for Profile Page usage
             localStorage.setItem("userProfile", JSON.stringify(data.user_profile));
         }

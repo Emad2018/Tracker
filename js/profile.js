@@ -25,14 +25,11 @@ function loadProfile() {
     const p = JSON.parse(profileStr);
     setText("p-name", p.name);
     setText("p-email", p.email);
-    setText("p-company", p.company || "N/A");
+    setText("p-company", p.company_name || "N/A");
     const initials = p.name.split(" ").map(n => n.charAt(0).toUpperCase()).join("");
     setText("avatar-letter", initials);
-    const role = p.policy && p.policy.role_name ? p.policy.role_name : "User";
+    const role = p.role || "User";
     setText("p-role", role.replace('_', ' ').toUpperCase());
-
-    if (p.CreatedAt) setText("p-joined", new Date(p.CreatedAt).toLocaleDateString());
-    if (p.LastLoginAt) setText("p-login", new Date(p.LastLoginAt).toLocaleString());
   } catch (e) {
     console.error("Error parsing profile:", e);
   }
@@ -41,6 +38,7 @@ function loadProfile() {
 async function loadDevices() {
   const listContainer = document.getElementById('device-list');
   const accountId = localStorage.getItem('accountId');
+  const company_id = localStorage.getItem('company_id');
 
   // Show loading state
   listContainer.innerHTML = `
@@ -53,15 +51,14 @@ async function loadDevices() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        creator_id: accountId,
-        action: "list_all",
-        body: {}
+        id: accountId,
+        operation: "list",
+        body: { company_id: company_id }
       })
     });
 
     const data = await res.json();
     const devices = data.devices || [];
-
     if (devices.length === 0) {
       listContainer.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">No devices found in your fleet.</p>`;
       return;
@@ -88,7 +85,7 @@ async function loadDevices() {
               </div>
 
               <h3 class="font-black text-slate-800 text-lg leading-tight">${d.brand}</h3>
-              <p class="text-slate-400 text-[11px] font-mono mb-4">License: ${d.license}</p>
+              <p class="text-slate-400 text-[11px] font-mono mb-4">Plate_Number: ${d.Plate_Number}</p>
               
               <div class="grid grid-cols-2 gap-2 mb-4">
                   <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">

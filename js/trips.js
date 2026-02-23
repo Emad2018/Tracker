@@ -25,6 +25,7 @@ window.loadTrips = async function () {
     const fromDate = document.getElementById('from').value;
     const toDate = document.getElementById('to').value;
     const accountId = localStorage.getItem("accountId");
+    const company_id = localStorage.getItem('company_id');
 
     if (!imei || !fromDate || !toDate) {
         alert("Please enter Device IMEI and select a date range.");
@@ -47,12 +48,12 @@ window.loadTrips = async function () {
         const endIso = new Date(toDate).toISOString(); // Consider setting time to 23:59:59 for end date if needed
 
         const payload = {
+
             creator_id: accountId,
-            action: "view_trips",
+            operation: "view_trips",
             body: {
                 imei: imei,
-                start_date: startIso,
-                end_date: endIso
+                company_id: company_id
             }
         };
 
@@ -95,11 +96,11 @@ window.loadTrips = async function () {
 // 5. Render Trip Card
 function renderTripCard(trip, index) {
     const list = document.getElementById('trip-list');
-
+    console.log(trip)
     // Extract data from the new structure
-    const tripData = trip.trip_data || {};
-    const distance = tripData.distance_km ? tripData.distance_km.toFixed(2) : '0.00';
-    const duration = tripData.duration_seconds ? (tripData.duration_seconds / 60).toFixed(0) : '0';
+    const tripData = trip.trip_stats || {};
+    const distance = tripData.distance_km;
+    const duration = tripData.duration_seconds
 
     const startTime = new Date(trip.start_date).toLocaleString();
     const endTime = trip.end_date ? new Date(trip.end_date).toLocaleString() : "In Progress";

@@ -74,12 +74,17 @@ let currentlyFocusedImei = null;
 async function fetchFleet() {
     const listContainer = document.getElementById('fleet-list');
     const accountId = localStorage.getItem('accountId');
+    const company_id = localStorage.getItem('company_id');
 
     try {
         const res = await fetch(CONFIG.api.deviceUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ creator_id: accountId, action: "list_all", body: {} })
+            body: JSON.stringify({
+                id: accountId,
+                operation: "list",
+                body: { company_id: company_id }
+            })
         });
         const data = await res.json();
 
@@ -267,7 +272,7 @@ function renderPanel(imei) {
     document.getElementById('panel-gnss').innerText = gnssStatusMap[data.gnss_status] || "Unknown";
     document.getElementById('panel-batt').innerText = (data.battery_voltage_v / 1000).toFixed(1) + " V";
     document.getElementById('panel-sats').innerText = data.satellites;
-    document.getElementById('panel-time').innerText = new Date(data.timestamp).toLocaleTimeString();
+    document.getElementById('panel-time').innerText = new Date(data.timestamp).toISOString();
 }
 
 function updateMapBounds() {

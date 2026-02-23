@@ -5,7 +5,7 @@ import argparse
 import os
 
 # Configuration
-API_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/trip"
+API_URL = "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/trip"
 
 def send_trips(imei):
     trips = load_trips()
@@ -64,21 +64,24 @@ def send_post_request(payload):
 
 def startTrip(imei, startdate):
     return {
-        "action": "start_trip",
+        "id": "14d82438-30c1-708f-0dbc-ff357c6a2019",
+        "operation": "start_trip",
         "body": {
             "imei": imei,
             "driver_id": "14d82438-30c1-708f-0dbc-ff357c6a2019",
             "client_id": "",
+            "company_id":"73b038e9-91df-4ef1-86f8-1c32db30460e",
             "start_date": startdate
         }
     }
 
 def endTrip(imei, enddate):
     return {
-        "action": "end_trip",
+        "id": "14d82438-30c1-708f-0dbc-ff357c6a2019",
+        "operation": "end_trip",
         "body": {
             "imei": imei,
-            "driver_id": "14d82438-30c1-708f-0dbc-ff357c6a2019",
+            "company_id":"73b038e9-91df-4ef1-86f8-1c32db30460e",
             "end_date": enddate
         }
     }

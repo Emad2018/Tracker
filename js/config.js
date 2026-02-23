@@ -2,9 +2,9 @@ import { Amplify } from "https://esm.sh/aws-amplify@6";
 export const CONFIG = {
     api: {
         // Base URL derived from your Postman environment
-        authUrl: "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/auth",
-        tripUrl: "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/trip",
-        deviceUrl: "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/device"
+        authUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/auth",
+        tripUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/trip",
+        deviceUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/device"
     },
     routes: {
         dashboard: "profile.html",
