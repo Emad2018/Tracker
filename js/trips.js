@@ -46,14 +46,15 @@ window.loadTrips = async function () {
         // Construct ISO timestamps for the API
         const startIso = new Date(fromDate).toISOString();
         const endIso = new Date(toDate).toISOString(); // Consider setting time to 23:59:59 for end date if needed
-
         const payload = {
 
             creator_id: accountId,
             operation: "view_trips",
             body: {
                 imei: imei,
-                company_id: company_id
+                company_id: company_id,
+                from: startIso,
+                to: endIso
             }
         };
 
@@ -96,11 +97,10 @@ window.loadTrips = async function () {
 // 5. Render Trip Card
 function renderTripCard(trip, index) {
     const list = document.getElementById('trip-list');
-    console.log(trip)
     // Extract data from the new structure
     const tripData = trip.trip_stats || {};
-    const distance = tripData.distance_km;
-    const duration = tripData.duration_seconds
+    const distance = tripData.distance_km ? tripData.distance_km.toFixed(2) : '0.00';
+    const duration = tripData.duration_seconds ? (tripData.duration_seconds / 60).toFixed(0) : '0';
 
     const startTime = new Date(trip.start_date).toLocaleString();
     const endTime = trip.end_date ? new Date(trip.end_date).toLocaleString() : "In Progress";

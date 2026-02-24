@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.href = CONFIG.routes.dashboard;
       }
       // Handle Force Password Change (First Time Login)
-      else if (res.status === 'NEW_PASSWORD_REQUIRED' || res.challengeName === 'NEW_PASSWORD_REQUIRED') {
+      else if (res.status === 'FORCE_PASSWORD_CHANGE_REQUIRED' || res.challengeName === 'FORCE_PASSWORD_CHANGE_REQUIRED') {
         // The backend should return a 'session' string needed for the next step
         tempSession = res.session;
         UI.hide("loginContainer");
