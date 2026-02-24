@@ -4,7 +4,8 @@ export const CONFIG = {
         // Base URL derived from your Postman environment
         authUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/auth",
         tripUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/trip",
-        deviceUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/device"
+        deviceUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/device",
+        lockUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/lock"
     },
     routes: {
         dashboard: "profile.html",

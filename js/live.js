@@ -273,8 +273,196 @@ function renderPanel(imei) {
     document.getElementById('panel-batt').innerText = (data.battery_voltage_v / 1000).toFixed(1) + " V";
     document.getElementById('panel-sats').innerText = data.satellites;
     document.getElementById('panel-time').innerText = new Date(data.timestamp).toISOString();
+
+    // --- NEW: Setup Action Buttons ---
+    setupActionButtons(imei);
+}
+const vehicleStates = {};
+
+function setupActionButtons(imei) {
+    // Initialize state if not present
+    if (!vehicleStates[imei]) {
+        vehicleStates[imei] = {
+            tripActive: false, // Default assumption
+            locked: false      // Default assumption
+        };
+    }
+
+    const state = vehicleStates[imei];
+    const messageEl = document.getElementById('action-message');
+    const btnTrip = document.getElementById('btn-trip');
+    const btnLock = document.getElementById('btn-lock');
+
+    // Clear previous messages
+    messageEl.innerText = "";
+    messageEl.className = "text-[10px] text-center font-bold mb-2 min-h-[15px]";
+
+    // 1. Configure Trip Button
+    updateTripButtonUI(btnTrip, state.tripActive);
+
+    // Remove old listeners (cloning replaces the node to strip listeners)
+    const newBtnTrip = btnTrip.cloneNode(true);
+    btnTrip.parentNode.replaceChild(newBtnTrip, btnTrip);
+
+    newBtnTrip.onclick = () => handleTripAction(imei, newBtnTrip, messageEl);
+
+    // 2. Configure Lock Button
+    updateLockButtonUI(btnLock, state.locked);
+
+    const newBtnLock = btnLock.cloneNode(true);
+    btnLock.parentNode.replaceChild(newBtnLock, btnLock);
+
+    newBtnLock.onclick = () => handleLockAction(imei, newBtnLock, messageEl);
 }
 
+function updateTripButtonUI(btn, isActive) {
+    if (isActive) {
+        btn.innerText = "END TRIP";
+        btn.className = "py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md bg-red-600 hover:bg-red-700 w-full";
+    } else {
+        btn.innerText = "START TRIP";
+        btn.className = "py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md bg-emerald-500 hover:bg-emerald-600 w-full";
+    }
+}
+
+function updateLockButtonUI(btn, isLocked) {
+    if (isLocked) {
+        btn.innerText = "UNLOCK";
+        btn.className = "py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md bg-emerald-500 hover:bg-emerald-600 w-full";
+    } else {
+        btn.innerText = "LOCK";
+        btn.className = "py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md bg-red-600 hover:bg-red-700 w-full";
+    }
+}
+
+async function handleTripAction(imei, btn, msgEl) {
+    if (!activeSubscriptions[imei]) {
+        msgEl.innerText = "Device must be active to start trip";
+        msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+        return;
+    }
+    const currentState = vehicleStates[imei].tripActive;
+    const accountId = localStorage.getItem('accountId');
+    const companyId = localStorage.getItem('company_id');
+
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    msgEl.innerText = "Processing...";
+    msgEl.className = "text-[10px] text-center font-bold mb-2 text-slate-500";
+
+    const payload = {
+        creator_id: accountId, // Used for start_trip
+        operation: currentState ? "end_trip" : "start_trip",
+        body: {
+            imei: imei,
+            company_id: companyId
+        }
+    };
+
+    // Add specific fields for start_trip
+    if (!currentState) {
+        payload.body.driver_id = accountId;
+        payload.body.client_id = "";
+    }
+
+    try {
+        const res = await fetch(CONFIG.api.tripUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        let success = false;
+
+        // Check for specific "Already active" error to auto-switch state
+        // Note: Adjust the check based on exact API error structure
+        const responseString = JSON.stringify(data);
+
+        if (responseString.includes("already has an active trip")) {
+            // Logic requirement: Show message and switch button to Red (Active)
+            msgEl.innerText = `Vehicle ${imei} already has an active trip.`;
+            msgEl.className = "text-[10px] text-center font-bold mb-2 text-orange-500";
+
+            vehicleStates[imei].tripActive = true; // Force state to active
+            updateTripButtonUI(btn, true);
+        }
+        else if (res.ok || (data.statusCode >= 200 && data.statusCode < 300)) {
+            success = true;
+            vehicleStates[imei].tripActive = !currentState;
+            updateTripButtonUI(btn, vehicleStates[imei].tripActive);
+            msgEl.innerText = currentState ? "Trip Ended" : "Trip Started";
+            msgEl.className = "text-[10px] text-center font-bold mb-2 text-green-600";
+        } else {
+            msgEl.innerText = "Request Failed";
+            msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+        }
+
+    } catch (e) {
+        console.error(e);
+        msgEl.innerText = "Network Error";
+        msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+async function handleLockAction(imei, btn, msgEl) {
+    if (!activeSubscriptions[imei]) {
+        msgEl.innerText = "Device must be active to lock/unlock";
+        msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+        return;
+    }
+    const isLocked = vehicleStates[imei].locked; // Currently locked?
+    const accountId = localStorage.getItem('accountId');
+    const companyId = localStorage.getItem('company_id');
+
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    msgEl.innerText = "Processing...";
+
+    // If currently locked, we want to UNLOCK. If unlocked, we want to LOCK.
+    const operation = isLocked ? "unlock" : "lock";
+
+    const payload = {
+        id: accountId,
+        operation: operation,
+        body: {
+            imei: imei,
+            company_id: companyId
+        }
+    };
+
+    try {
+        const res = await fetch(CONFIG.api.lockUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.status == 200) {
+            // Toggle state
+            vehicleStates[imei].locked = !isLocked;
+            updateLockButtonUI(btn, vehicleStates[imei].locked);
+
+            msgEl.innerText = data || (isLocked ? "Vehicle Unlocked" : "Vehicle Locked");
+            msgEl.className = "text-[10px] text-center font-bold mb-2 text-green-600";
+        } else {
+            msgEl.innerText = "Lock Action Failed";
+            msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+        }
+
+    } catch (e) {
+        console.error(e);
+        msgEl.innerText = "Network Error";
+        msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
 function updateMapBounds() {
     const markers = Object.values(deviceMarkers);
     if (markers.length > 0) {

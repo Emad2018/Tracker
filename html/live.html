@@ -81,6 +81,7 @@
 
             <div id="info-panel"
                 class="absolute top-4 right-4 w-72 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-white/50 p-4 hidden z-[1000] transition-all">
+
                 <div class="flex justify-between items-start mb-3">
                     <div>
                         <h3 id="panel-name" class="font-black text-lg leading-none text-slate-800">--</h3>
@@ -102,7 +103,7 @@
                     </div>
                 </div>
 
-                <div class="space-y-1 text-xs text-slate-600">
+                <div class="space-y-1 text-xs text-slate-600 mb-4">
                     <div class="flex justify-between"><span>Odometer:</span> <span id="panel-odo"
                             class="font-bold">--</span></div>
                     <div class="flex justify-between"><span>GNSS:</span> <span id="panel-gnss"
@@ -113,6 +114,16 @@
                             class="font-bold">--</span></div>
                     <div class="flex justify-between mt-2 pt-2 border-t"><span>Updated:</span> <span id="panel-time"
                             class="font-mono text-[10px]">--</span></div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-200">
+                    <div id="action-message" class="text-[10px] text-center font-bold mb-2 min-h-[15px]"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-trip"
+                            class="py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md"></button>
+                        <button id="btn-lock"
+                            class="py-2 px-3 rounded-lg text-xs font-bold text-white transition shadow-md"></button>
+                    </div>
                 </div>
             </div>
         </div>
