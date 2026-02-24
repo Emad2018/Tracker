@@ -209,9 +209,10 @@ function updateDeviceData(imei, data) {
 
     // 1. Update List Status
     const statusEl = document.getElementById(`status-${imei}`);
+    const isonline = getDeviceStatus(data.timestamp); // Update internal status based on timestamp
     if (statusEl) {
-        statusEl.innerText = data.speed_gnss > 0 ? "MOVING" : "IDLE";
-        statusEl.className = `text-[9px] font-bold uppercase ${data.speed_gnss > 0 ? 'text-green-600' : 'text-orange-500'}`;
+        statusEl.innerText = isonline ? (data.speed_gnss > 0 ? "MOVING" : "IDLE") : "OFFLINE";
+        statusEl.className = `text-[9px] font-bold uppercase ${isonline ? (data.speed_gnss > 0 ? 'text-green-600' : 'text-orange-500') : 'text-red-500'}`;
     }
 
     // 2. Update/Create Marker
@@ -336,7 +337,8 @@ function updateLockButtonUI(btn, isLocked) {
 }
 
 async function handleTripAction(imei, btn, msgEl) {
-    if (!activeSubscriptions[imei]) {
+    const timestamp = deviceDataStore[imei].timestamp;
+    if (!activeSubscriptions[imei] || !getDeviceStatus(timestamp)) {
         msgEl.innerText = "Device must be active to start trip";
         msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
         return;
@@ -409,7 +411,9 @@ async function handleTripAction(imei, btn, msgEl) {
 }
 
 async function handleLockAction(imei, btn, msgEl) {
-    if (!activeSubscriptions[imei]) {
+
+    const timestamp = deviceDataStore[imei].timestamp;
+    if (!activeSubscriptions[imei] || !getDeviceStatus(timestamp)) {
         msgEl.innerText = "Device must be active to lock/unlock";
         msgEl.className = "text-[10px] text-center font-bold mb-2 text-red-500";
         return;
@@ -473,4 +477,21 @@ function updateMapBounds() {
 
 function updateActiveCount() {
     document.getElementById('active-count').innerText = Object.keys(activeSubscriptions).length;
+}
+
+// Helper to determine if a device is Online or Offline (5 min threshold)
+function getDeviceStatus(timestamp) {
+    if (!timestamp) return false;
+
+    const lastSeen = new Date(timestamp).getTime();
+    const now = Date.now();
+    const diffMinutes = (now - lastSeen) / 1000 / 60;
+
+    // 5-minute threshold check
+    if (diffMinutes > 5) {
+        return false;
+    }
+
+    // If online, differentiate between Moving and Idle
+    return true;
 }
