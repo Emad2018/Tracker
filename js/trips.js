@@ -1,7 +1,7 @@
 import { CONFIG } from "./config.js";
 
 // 1. Initialize Map & Layers
-const tripMap = L.map('trip-map').setView([30.0444, 31.2357], 6); // Default view (Egypt)
+const tripMap = L.map('trip-map').setView([30.0444, 31.2357], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 18
@@ -19,16 +19,69 @@ window.logout = function () {
     window.location.href = CONFIG.routes.login;
 };
 
+// --- NEW FUNCTION: Populate Dropdown ---
+async function populateDeviceDropdown() {
+    const select = document.getElementById('device-id');
+    const accountId = localStorage.getItem('accountId');
+    const company_id = localStorage.getItem('company_id');
+
+    // Check URL for pre-selected IMEI (e.g. from Profile page)
+    const params = new URLSearchParams(window.location.search);
+    const preSelectedImei = params.get('imei');
+
+    try {
+        const res = await fetch(CONFIG.api.deviceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: accountId,
+                operation: "list",
+                body: { company_id: company_id }
+            })
+        });
+
+        const data = await res.json();
+        const devices = data.devices || [];
+
+        // Reset Dropdown
+        select.innerHTML = '<option value="" disabled selected>Select a Vehicle</option>';
+
+        if (devices.length === 0) {
+            const option = document.createElement('option');
+            option.text = "No vehicles found";
+            select.appendChild(option);
+            return;
+        }
+
+        devices.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.imei;
+            // Display Brand and Plate Number (or IMEI if plate is missing)
+            option.text = `${d.brand} - ${d.Plate_Number || d.imei}`;
+
+            // Handle Pre-selection
+            if (d.imei === preSelectedImei) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+    } catch (e) {
+        console.error("Error loading devices:", e);
+        select.innerHTML = '<option value="" disabled>Error loading list</option>';
+    }
+}
+
 // 3. Load Trips Function
 window.loadTrips = async function () {
-    const imei = document.getElementById('device-id').value.trim();
+    const imei = document.getElementById('device-id').value; // Now gets value from select
     const fromDate = document.getElementById('from').value;
     const toDate = document.getElementById('to').value;
     const accountId = localStorage.getItem("accountId");
     const company_id = localStorage.getItem('company_id');
 
     if (!imei || !fromDate || !toDate) {
-        alert("Please enter Device IMEI and select a date range.");
+        alert("Please select a Vehicle and a date range.");
         return;
     }
 
@@ -40,14 +93,12 @@ window.loadTrips = async function () {
         btn.disabled = true;
         btn.innerText = "Searching...";
     }
-    list.innerHTML = ""; // Clear previous results
+    list.innerHTML = "";
 
     try {
-        // Construct ISO timestamps for the API
         const startIso = new Date(fromDate + "T00:00:00").toISOString();
-        const endIso = new Date(toDate + "T23:59:59").toISOString(); // Consider setting time to 23:59:59 for end date if needed
+        const endIso = new Date(toDate + "T23:59:59").toISOString();
         const payload = {
-
             creator_id: accountId,
             operation: "view_trips",
             body: {
@@ -60,15 +111,12 @@ window.loadTrips = async function () {
 
         const response = await fetch(CONFIG.api.tripUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-        // 4. Handle Response
-        // The API returns { statusCode: 200, body: "stringified_json" }
+
         if (response.status === 200 && data.trips) {
             const trips = data.trips || [];
 
@@ -94,10 +142,9 @@ window.loadTrips = async function () {
     }
 };
 
-// 5. Render Trip Card
+// 5. Render Trip Card (No changes needed, kept for context)
 function renderTripCard(trip, index) {
     const list = document.getElementById('trip-list');
-    // Extract data from the new structure
     const tripData = trip.trip_stats || {};
     const distance = tripData.distance_km ? tripData.distance_km.toFixed(2) : '0.00';
     const duration = tripData.duration_seconds ? (tripData.duration_seconds / 60).toFixed(0) : '0';
@@ -151,9 +198,7 @@ function renderTripCard(trip, index) {
         </button>
     `;
 
-    // Attach event listener directly to pass the trip object safely
     card.querySelector('.view-route-btn').addEventListener('click', () => showMap(trip));
-
     list.appendChild(card);
 }
 
@@ -162,29 +207,24 @@ function showMap(trip) {
     const modal = document.getElementById('map-modal');
     modal.classList.remove('hidden');
 
-    // Wait for modal to be visible before resizing map
     setTimeout(() => {
         tripMap.invalidateSize();
     }, 100);
 
-    // Clear previous layers
     pathLayer.clearLayers();
 
     const tripData = trip.trip_stats || {};
-    const points = tripData.points || []; // Points are now [[lat, lng], [lat, lng]]
+    const points = tripData.points || [];
 
     if (points.length === 0) {
         alert("No GPS points available for this trip.");
         return;
     }
 
-    // Draw Polyline
     const correctedPoints = points.map(p => [p[1], p[0]]);
     const polyline = L.polyline(correctedPoints, { color: '#2563eb', weight: 4, opacity: 0.8 }).addTo(pathLayer);
     tripMap.fitBounds(polyline.getBounds(), { padding: [50, 50] });
 
-    // Add Start/End Markers
-    // Points structure is already [lat, lng], so we can access directly
     const startPoint = correctedPoints[0];
     const endPoint = correctedPoints[correctedPoints.length - 1];
     const redIcon = L.icon({
@@ -202,23 +242,16 @@ function showMap(trip) {
         .bindPopup(`<b>End</b><br>${new Date(trip.end_date).toLocaleTimeString()}`);
 }
 
-// 7. Close Map Helper
 window.closeMap = function () {
     document.getElementById('map-modal').classList.add('hidden');
 };
 
-// 8. Init Page (Load saved IMEI)
+// 8. Init Page
 document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const deviceIdFromProfile = params.get('imei');
-
-    if (deviceIdFromProfile) {
-        document.getElementById('device-id').value = deviceIdFromProfile;
-        localStorage.setItem('lastImei', deviceIdFromProfile);
-    }
-
+    // Set default To Date
     const today = new Date().toISOString().split('T')[0];
-
     document.getElementById('to').value = today;
 
+    // Populate dropdown with devices
+    populateDeviceDropdown();
 });

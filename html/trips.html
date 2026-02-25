@@ -51,9 +51,11 @@
         <div
             class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Device IMEI</label>
-                <input type="text" id="device-id" placeholder="e.g. 86445407..."
-                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Select Vehicle</label>
+                <select id="device-id"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition cursor-pointer">
+                    <option value="" disabled selected>Loading vehicles...</option>
+                </select>
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">From Date</label>
