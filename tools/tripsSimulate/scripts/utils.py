@@ -131,7 +131,8 @@ def append_logs_to_file(new_records):
 
 # --- Random Data Generators ---
 COMPANIES = ["ElOmda", "LogiTrans", "FastTrack", "NileCargo"]
-BRANDS = ["Nissan-Sunny", "Toyota-Corolla", "Hyundai-Elantra"]
+BRANDS = ["Nissan-Sunny", "Toyota-Corolla", "Hyundai-Elantra","Kia-Cerato","Honda-Civic","Mitsubishi-Lancer","Renault-Megane",
+          "Chevrolet-Optra","Skoda-Octavia","Volkswagen-Passat","Ford-Focus","Mazda-3","MG-5"];
 COLORS = ["Blue", "Red", "White", "Black"]
 NAMES = ["Mahmoud's Car", "Ahmed's Truck", "Omar's Van"]
 
