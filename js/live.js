@@ -1,5 +1,6 @@
-import { generateClient } from "https://cdn.skypack.dev/@aws-amplify/api";
-import { Amplifyconfig, CONFIG } from "./config.js";
+import { Amplify } from "https://cdn.skypack.dev/aws-amplify";
+import { generateClient } from "https://cdn.skypack.dev/aws-amplify/api";
+import { CONFIG } from "./config.js";
 import { AuthService } from "./auth-service.js";
 
 // 1. Auth Guard
@@ -9,6 +10,7 @@ if (!AuthService.isAuthenticated()) {
 window.logout = () => {
     AuthService.logout();
 };
+Amplify.configure(CONFIG.amplifyConfig);
 const client = generateClient();
 const map = L.map('map', { zoomControl: false }).setView([26.8206, 30.8025], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(map);
