@@ -44,8 +44,8 @@ window.loadTrips = async function () {
 
     try {
         // Construct ISO timestamps for the API
-        const startIso = new Date(fromDate).toISOString();
-        const endIso = new Date(toDate).toISOString(); // Consider setting time to 23:59:59 for end date if needed
+        const startIso = new Date(fromDate + "T00:00:00").toISOString();
+        const endIso = new Date(toDate + "T23:59:59").toISOString(); // Consider setting time to 23:59:59 for end date if needed
         const payload = {
 
             creator_id: accountId,
