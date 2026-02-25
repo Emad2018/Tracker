@@ -4,7 +4,8 @@ export const CONFIG = {
         authUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/auth",
         tripUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/trip",
         deviceUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/device",
-        lockUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/lock"
+        lockUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/lock",
+        fleetUrl: "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/fleet"
     },
     routes: {
         dashboard: "profile.html",

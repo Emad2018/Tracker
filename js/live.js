@@ -79,7 +79,7 @@ async function fetchFleet() {
     const company_id = localStorage.getItem('company_id');
 
     try {
-        const res = await fetch(CONFIG.api.deviceUrl, {
+        const res = await fetch(CONFIG.api.fleetUrl, { // Changed to fleetUrl
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -89,44 +89,83 @@ async function fetchFleet() {
             })
         });
         const data = await res.json();
+        const fleets = data.fleets || [];
 
-        if (data.devices) {
-            allDevices = data.devices || [];
-        }
+        // Flatten vehicles for global state (keeps your map/subscription logic unbroken)
+        allDevices = [];
+        fleets.forEach(fleet => {
+            if (fleet.vehicles) {
+                allDevices.push(...fleet.vehicles);
+            }
+        });
 
-        renderFleetList(listContainer);
+        renderFleetGroups(listContainer, fleets);
     } catch (e) {
         console.error("Fleet load error", e);
-        listContainer.innerHTML = `<div class="p-4 text-red-500 text-xs">Failed to load fleet</div>`;
+        listContainer.innerHTML = `<div class="p-4 text-red-500 text-xs">Failed to load fleets</div>`;
     }
 }
-
-function renderFleetList(container) {
+function renderFleetGroups(container, fleets) {
     container.innerHTML = "";
-    if (allDevices.length === 0) {
+    if (fleets.length === 0 || allDevices.length === 0) {
         container.innerHTML = `<div class="p-4 text-slate-400 text-xs text-center">No devices found</div>`;
         return;
     }
 
-    allDevices.forEach(d => {
-        const item = document.createElement('div');
-        item.className = "flex items-center p-3 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition cursor-pointer group";
-        item.innerHTML = `
-            <input type="checkbox" value="${d.imei}" class="device-check w-4 h-4 text-blue-600 rounded mr-3 cursor-pointer">
-            <div class="flex-1" onclick="focusDevice('${d.imei}')">
-                <div class="flex justify-between">
-                    <span class="font-bold text-sm text-slate-800">${d.brand} <span class="font-normal text-slate-500 text-xs">(${d.color})</span></span>
-                    <span id="status-${d.imei}" class="text-[9px] font-bold uppercase text-slate-400">OFFLINE</span>
-                </div>
-                <div class="text-[10px] text-slate-500 font-mono">${d.imei}</div>
+    fleets.forEach((fleet, index) => {
+        if (!fleet.vehicles || fleet.vehicles.length === 0) return;
+
+        // 1. Create Fleet Header (The clickable Accordion trigger)
+        const header = document.createElement('div');
+        header.className = "bg-slate-100 hover:bg-slate-200 cursor-pointer p-3 text-[11px] font-black text-slate-700 sticky top-0 z-10 uppercase tracking-widest flex justify-between items-center rounded-lg shadow-sm mb-2 mt-2 transition-colors";
+
+        header.innerHTML = `
+            <div class="flex items-center gap-2">
+                <svg class="chevron w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+                <span>${fleet.name}</span>
             </div>
+            <span class="bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] shadow-inner">${fleet.vehicles.length}</span>
         `;
 
-        // Handle Checkbox (Subscribe/Unsubscribe)
-        const checkbox = item.querySelector('input');
-        checkbox.addEventListener('change', (e) => toggleDevice(d.imei, e.target.checked));
+        // 2. Create Wrapper for Vehicles (The collapsible content)
+        const vehicleWrapper = document.createElement('div');
+        // Initial state is open. Add 'collapsed' to the class list here if you want them closed by default.
+        vehicleWrapper.className = "accordion-content space-y-1 mb-3 ml-2 border-l-2 border-slate-200 pl-2";
 
-        container.appendChild(item);
+        // Toggle Logic
+        header.addEventListener('click', () => {
+            const chevron = header.querySelector('.chevron');
+            chevron.classList.toggle('rotated');
+            vehicleWrapper.classList.toggle('collapsed');
+        });
+
+        // 3. Create Vehicle Items
+        fleet.vehicles.forEach(d => {
+            const item = document.createElement('div');
+            item.className = "flex items-center p-2.5 bg-white border border-slate-100 rounded-lg hover:bg-slate-50 transition cursor-pointer group shadow-sm";
+            item.innerHTML = `
+                <input type="checkbox" value="${d.imei}" class="device-check w-4 h-4 text-blue-600 rounded mr-3 cursor-pointer">
+                <div class="flex-1" onclick="focusDevice('${d.imei}')">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-bold text-xs text-slate-800">${d.brand || d.name}</span>
+                        <span id="status-${d.imei}" class="text-[9px] font-bold uppercase text-slate-400">OFFLINE</span>
+                    </div>
+                    <div class="text-[9px] text-slate-500 font-mono">${d.Plate_Number || d.imei}</div>
+                </div>
+            `;
+
+            // Handle Checkbox
+            const checkbox = item.querySelector('input');
+            checkbox.addEventListener('change', (e) => toggleDevice(d.imei, e.target.checked));
+
+            vehicleWrapper.appendChild(item);
+        });
+
+        // Append to container
+        container.appendChild(header);
+        container.appendChild(vehicleWrapper);
     });
 }
 

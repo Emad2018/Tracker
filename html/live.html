@@ -14,14 +14,47 @@
             border: none;
         }
 
-        /* Scrollbar for fleet list */
+        /* Enhanced Custom Scrollbar */
         .scroller::-webkit-scrollbar {
-            width: 4px;
+            width: 6px;
+        }
+
+        .scroller::-webkit-scrollbar-track {
+            background: transparent;
         }
 
         .scroller::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 4px;
+            background-color: #94a3b8;
+            border-radius: 10px;
+        }
+
+        .scroller::-webkit-scrollbar-thumb:hover {
+            background-color: #64748b;
+        }
+
+        /* Accordion Animations */
+        .accordion-content {
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out;
+            max-height: 1500px;
+            /* Generous height for open state */
+            opacity: 1;
+            overflow: hidden;
+        }
+
+        .accordion-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .chevron {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .chevron.rotated {
+            transform: rotate(-90deg);
+            /* Points right when collapsed */
         }
     </style>
 </head>

@@ -20,17 +20,17 @@ window.logout = function () {
 };
 
 // --- NEW FUNCTION: Populate Dropdown ---
+// In trips.js, replace the populateDeviceDropdown function:
+
 async function populateDeviceDropdown() {
     const select = document.getElementById('device-id');
     const accountId = localStorage.getItem('accountId');
     const company_id = localStorage.getItem('company_id');
-
-    // Check URL for pre-selected IMEI (e.g. from Profile page)
     const params = new URLSearchParams(window.location.search);
     const preSelectedImei = params.get('imei');
 
     try {
-        const res = await fetch(CONFIG.api.deviceUrl, {
+        const res = await fetch(CONFIG.api.fleetUrl, { // Changed to fleetUrl
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -41,33 +41,38 @@ async function populateDeviceDropdown() {
         });
 
         const data = await res.json();
-        const devices = data.devices || [];
+        const fleets = data.fleets || [];
 
-        // Reset Dropdown
         select.innerHTML = '<option value="" disabled selected>Select a Vehicle</option>';
 
-        if (devices.length === 0) {
-            const option = document.createElement('option');
-            option.text = "No vehicles found";
-            select.appendChild(option);
+        if (fleets.length === 0) {
+            select.innerHTML += `<option value="" disabled>No vehicles found</option>`;
             return;
         }
 
-        devices.forEach(d => {
-            const option = document.createElement('option');
-            option.value = d.imei;
-            // Display Brand and Plate Number (or IMEI if plate is missing)
-            option.text = `${d.brand} - ${d.Plate_Number || d.imei}`;
+        fleets.forEach(fleet => {
+            if (!fleet.vehicles || fleet.vehicles.length === 0) return;
 
-            // Handle Pre-selection
-            if (d.imei === preSelectedImei) {
-                option.selected = true;
-            }
-            select.appendChild(option);
+            // Create group for the fleet
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = fleet.name;
+
+            fleet.vehicles.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.imei;
+                option.text = `${d.brand || d.name} - ${d.Plate_Number || d.imei}`;
+
+                if (d.imei === preSelectedImei) {
+                    option.selected = true;
+                }
+                optgroup.appendChild(option);
+            });
+
+            select.appendChild(optgroup);
         });
 
     } catch (e) {
-        console.error("Error loading devices:", e);
+        console.error("Error loading fleets:", e);
         select.innerHTML = '<option value="" disabled>Error loading list</option>';
     }
 }
