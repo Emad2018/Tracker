@@ -1,4 +1,4 @@
-import { Amplify } from "https://esm.sh/aws-amplify@6";
+import { Amplify } from "https://cdn.skypack.dev/aws-amplify";
 export const CONFIG = {
     api: {
         // Base URL derived from your Postman environment

@@ -1,4 +1,4 @@
-import { generateClient } from "https://esm.sh/aws-amplify@6/api";
+import { generateClient } from "https://cdn.skypack.dev/@aws-amplify/api";
 import { Amplifyconfig, CONFIG } from "./config.js";
 import { AuthService } from "./auth-service.js";
 
