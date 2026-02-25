@@ -1,2 +1,4 @@
 
 tools/tripsSimulate/scripts/__pycache__/
+
+*.json
