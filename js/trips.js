@@ -34,8 +34,8 @@ async function populateDeviceDropdown() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                id: accountId,
-                operation: "list",
+                auth: { account_id: accountId, company_id: company_id },
+                operation: "list_fleets",
                 body: { company_id: company_id }
             })
         });

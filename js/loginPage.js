@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const res = await AuthService.login(email, pass);
-      console.log("Login failed with response:", res)
       // Check Status based on Postman response structure
       if (res.status === 'SUCCESS') {
         AuthService.saveSession(res);
