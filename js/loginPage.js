@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const res = await AuthService.login(email, pass);
+      console.log(res)
       // Check Status based on Postman response structure
       if (res.status === 'SUCCESS') {
         AuthService.saveSession(res);
@@ -38,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.show("forceChangePasswordContainer");
       }
       else {
-
+        console.log(res)
         throw new Error(res.message || "Login failed");
       }
 

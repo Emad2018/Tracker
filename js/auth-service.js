@@ -15,7 +15,7 @@ export const AuthService = {
             const data = await response.json();
             // Handle API-level errors (assuming your API returns 'error' or 'message' on failure)
             if (!response.ok || data.errorMessage || (data.status && data.status === 'ERROR')) {
-                throw new Error(data.errorMessage || data.message || "An unknown error occurred");
+                throw new Error(data.error || data.message || "An unknown error occurred");
             }
 
             return data;
