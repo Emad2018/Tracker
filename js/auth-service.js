@@ -79,8 +79,8 @@ export const AuthService = {
     saveSession: (data) => {
         // 1. Save Tokens
         if (data.tokens) {
-            if (data.tokens.access_token) localStorage.setItem("authToken", data.tokens.access_token);
-            if (data.tokens.id_token) localStorage.setItem("idToken", data.tokens.id_token);
+            if (data.tokens.AccessToken) localStorage.setItem("authToken", data.tokens.AccessToken);
+            if (data.tokens.IdToken) localStorage.setItem("idToken", data.tokens.IdToken);
         }
 
         // 2. Save User Profile
