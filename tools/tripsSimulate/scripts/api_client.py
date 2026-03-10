@@ -19,7 +19,7 @@ class APIClient:
             data = response.json()
             if data.get("status") == "SUCCESS":
                 self.access_token = data.get("tokens", {}).get("access_token")
-                self.account_id = data.get("user_profile", {}).get("user_id")
+                self.account_id = data.get("user_profile", {}).get("account_id")
                 self.company_id = data.get("user_profile", {}).get("company_id")
                 return True, "Login Successful"
             else:
@@ -30,7 +30,7 @@ class APIClient:
     def register_device(self, imei):
         if not config.DEVICE_URL: return False, "Config Error"
         
-        payload = {"id": self.account_id,"operation": "register","body": {"imei": imei, "model": "Teltonika-FMC150"}}
+        payload = {"auth":{"account_id":self.account_id ,"company_id" : self.company_id},"operation": "register_device","body": {"imei": imei, "model": "Teltonika-FMC150"}}
         
         try:
             response = requests.post(config.DEVICE_URL, json=payload)
@@ -43,8 +43,8 @@ class APIClient:
     def activate_device(self, imei, token, metadata):
         payload = {
 
-            "id": self.account_id,
-            "operation": "create",
+            "auth":{"account_id":self.account_id ,"company_id" : self.company_id},
+            "operation": "create_device",
             "body": {
                 "imei": imei, "token": token,
                 "name": metadata['name'], "company_id": self.company_id,
@@ -62,8 +62,8 @@ class APIClient:
     def fetch_all_devices(self):
         """Fetches the list of all devices from the cloud."""
         payload = {
-            "creator_id": self.account_id,
-            "operation": "list",
+            "auth":{"account_id":self.account_id ,"company_id" : self.company_id},
+            "operation": "list_devices",
             "body": {
                 "company_id": self.company_id
             }
@@ -160,7 +160,7 @@ class APIClient:
             body_data["end_date"] = current_time
 
         payload = {
-            "id":self.account_id,
+            "auth":{"account_id":self.account_id ,"company_id" : self.company_id},
             "operation": operation,
             "body": body_data
         }

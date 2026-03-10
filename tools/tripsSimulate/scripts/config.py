@@ -8,10 +8,10 @@ ROOT_CA_PATH = "certificate/AmazonRootCA1.pem"
 TOPIC_PREFIX = "SimulatorData"
 
 # --- API Configuration ---
-AUTH_URL = "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/auth"
-DEVICE_URL = "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/device"
+AUTH_URL = "https://zmv50h6cx8.execute-api.us-east-1.amazonaws.com/dev/auth"
+DEVICE_URL = "https://zmv50h6cx8.execute-api.us-east-1.amazonaws.com/dev/device"
 SIM_URL = "https://moj6el904i.execute-api.us-east-1.amazonaws.com/prod/sim" # New URL for reading logs
-TRIP_URL = "https://cfwhkbacci.execute-api.us-east-1.amazonaws.com/prod/trip" # NEW: Trip URL
+TRIP_URL = "https://zmv50h6cx8.execute-api.us-east-1.amazonaws.com/dev/trip" # NEW: Trip URL
 
 # Default Credentials
 DEFAULT_EMAIL = "abdelrahman.ibrahim@techno-welle.com"
