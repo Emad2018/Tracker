@@ -61,7 +61,6 @@ async function loadDevices() {
 
     const data = await res.json();
     const fleets = data.fleets || [];
-
     if (fleets.length === 0) {
       listContainer.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">No fleets found.</p>`;
       return;

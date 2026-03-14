@@ -86,7 +86,7 @@ export const AuthService = {
         // 2. Save User Profile
         if (data.user_profile) {
             // Save ID specifically for easy access
-            if (data.user_profile.user_id) localStorage.setItem("accountId", data.user_profile.user_id);
+            if (data.user_profile.account_id) localStorage.setItem("accountId", data.user_profile.account_id);
             if (data.user_profile.company_id) localStorage.setItem("company_id", data.user_profile.company_id);
             // Save the full object for Profile Page usage
             localStorage.setItem("userProfile", JSON.stringify(data.user_profile));

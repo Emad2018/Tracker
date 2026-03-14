@@ -1,5 +1,5 @@
 // 1. Set this to true for Dev, false for Prod
-const IS_DEV = false; // Change to true for development environment
+const IS_DEV = false;
 
 const BASE_URL = IS_DEV
     ? "https://zmv50h6cx8.execute-api.us-east-1.amazonaws.com/dev"
