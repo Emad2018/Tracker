@@ -104,7 +104,7 @@ window.loadTrips = async function () {
         const startIso = new Date(fromDate + "T00:00:00").toISOString();
         const endIso = new Date(toDate + "T23:59:59").toISOString();
         const payload = {
-            creator_id: accountId,
+            auth: { account_id: accountId, company_id: company_id },
             operation: "view_trips",
             body: {
                 imei: imei,
@@ -133,7 +133,7 @@ window.loadTrips = async function () {
                 });
             }
         } else {
-            throw new Error(data.message || "Failed to retrieve trips.");
+            throw new Error(data.error || "Failed to retrieve trips.");
         }
 
     } catch (err) {
